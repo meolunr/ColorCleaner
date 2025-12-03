@@ -220,6 +220,15 @@ def show_touchscreen_panel_info():
     apk.build()
 
 
+def disable_activity_start_dialog():
+    log('禁用关联启动对话框')
+    xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
+    root = xml.get_root()
+    element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
+    root.remove(element)
+    xml.commit()
+
+
 def turn_off_flashlight_with_power_key():
     log('启用电源键关闭手电筒')
     xml = XmlFile('system_ext/etc/permissions/com.oplus.features_config.xml')
@@ -395,16 +404,6 @@ def patch_services():
 def patch_miui_services():
     apk = ApkFile('system_ext/framework/miui-services.jar')
     apk.decode()
-
-    log('禁用关联启动对话框')
-    smali = apk.open_smali('miui/app/ActivitySecurityHelper.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'getCheckStartActivityIntent'
-    old_body = smali.find_method(specifier)
-    pattern = 'if-eqz p6, :cond_.+'
-    match = re.search(pattern, old_body)
-    new_body = old_body.replace(match.group(0), '')
-    smali.method_replace(old_body, new_body)
 
     log('防止主题恢复')
     smali = apk.open_smali('com/android/server/am/ActivityManagerServiceImpl.smali')
@@ -855,6 +854,7 @@ def run_on_rom():
     disable_launcher_clock_red_one()
     remove_vpn_notification()
     disable_sensitive_word_check()
+    disable_activity_start_dialog()
     show_touchscreen_panel_info()
     show_netmask_and_gateway()
     remove_calendar_ads()
