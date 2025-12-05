@@ -166,11 +166,18 @@ def disable_launcher_clock_red_one():
 
 
 @modified('system/system/framework/oplus-services.jar')
-def remove_vpn_notification():
-    log('移除已激活 VPN 通知')
+def patch_oplus_services():
     apk = ApkFile('system/system/framework/oplus-services.jar')
     apk.decode()
 
+    log('移除 ADB 安装确认')
+    smali = apk.open_smali('com/android/server/pm/OplusPackageInstallInterceptManager.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'allowInterceptAdbInstallInInstallStage'
+    specifier.parameters = 'ILandroid/content/pm/PackageInstaller$SessionParams;Ljava/io/File;Ljava/lang/String;Landroid/content/pm/IPackageInstallObserver2;'
+    smali.method_return_boolean(specifier, False)
+
+    log('移除已激活 VPN 通知')
     smali = apk.open_smali('com/android/server/connectivity/VpnExtImpl.smali')
     specifier = MethodSpecifier()
     specifier.name = 'showNotification'
@@ -220,8 +227,8 @@ def show_touchscreen_panel_info():
     apk.build()
 
 
-def disable_activity_start_dialog():
-    log('禁用关联启动对话框')
+def remove_activity_start_dialog():
+    log('移除关联启动对话框')
     xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
     root = xml.get_root()
     element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
@@ -881,9 +888,9 @@ def run_on_rom():
     patch_system_ui()
     disable_lock_screen_red_one()
     disable_launcher_clock_red_one()
-    remove_vpn_notification()
+    patch_oplus_services()
     disable_sensitive_word_check()
-    disable_activity_start_dialog()
+    remove_activity_start_dialog()
     show_touchscreen_panel_info()
     show_netmask_and_gateway()
     remove_calendar_ads()

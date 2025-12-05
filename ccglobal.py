@@ -1,7 +1,7 @@
 import sys
 from datetime import datetime
 
-LIB_DIR = f'{sys.path[0]}/lib_linux'
+LIB_DIR = f'{sys.path[0]}/lib'
 MISC_DIR = f'{sys.path[0]}/misc'
 UPDATED_APP_JSON = 'product/UpdatedApp.json'
 PRODUCT_PRIVILEGE_PERMISSION_XML = 'product/etc/permissions/privapp-permissions-product.xml'
