@@ -332,6 +332,7 @@ def remove_calendar_ads():
     specifier = MethodSpecifier()
     specifier.name = 'getItemViewType'
     specifier.parameters = 'I'
+
     old_body = smali.find_method(specifier)
     new_body = '''\
 .method public getItemViewType(I)I
@@ -357,6 +358,34 @@ def remove_calendar_ads():
     specifier.name = 'isUnsupportedPhone'
     specifier.parameters = 'Ljava/lang/String;'
     smali.method_return_boolean(specifier, True)
+
+    apk.build()
+
+
+@modified('system_ext/app/NotificationCenter/NotificationCenter.apk')
+def show_icon_for_silent_notification():
+    log('允许显示静默通知的图标')
+    apk = ApkFile('system_ext/app/NotificationCenter/NotificationCenter.apk')
+    apk.decode()
+
+    smali = apk.open_smali('com/oplus/notificationmanager/fragments/main/MoreSettingFragment.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'onCreateView'
+    specifier.parameters = 'Landroid/view/LayoutInflater;Landroid/view/ViewGroup;Landroid/os/Bundle;'
+
+    old_body = smali.find_method(specifier)
+    pattern = '''\
+    const-string (?:[v|p]\\d+), "hide_silence_notification_icon_enable"
+
+    invoke-static {}, Lcom/oplus/notificationmanager/config/BaseFeatureOption;->isExpVersion\\(\\)Z
+
+    move-result (?:[v|p]\\d+)
+
+    invoke-static {(?:(?:[v|p]\\d+), ){3}(?:[v|p]\\d+)}, Lcom/oplus/notificationmanager/view/PerferenceExKt;->\
+initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String;Ljava/lang/Class;Z\\)Landroidx/preference/Preference;
+'''
+    new_body = re.sub(pattern, '', old_body)
+    smali.method_replace(old_body, new_body)
 
     apk.build()
 
