@@ -63,6 +63,58 @@ def rm_files():
                 log(f'文件不存在: {item}')
 
 
+def replace_installer():
+    log('替换 PUIPackageInstaller')
+    shutil.rmtree('system_ext/priv-app/OppoPackageInstaller')
+
+    pui_dir = 'system_ext/priv-app/PUIPackageInstaller'
+    os.makedirs(pui_dir)
+    shutil.copy(f'{MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
+
+
+def remove_activity_start_dialog():
+    log('移除关联启动对话框')
+    xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
+    root = xml.get_root()
+    element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
+    root.remove(element)
+    xml.commit()
+
+
+def turn_off_flashlight_with_power_key():
+    log('启用电源键关闭手电筒')
+    xml = XmlFile('system_ext/etc/permissions/com.oplus.features_config.xml')
+    root = xml.get_root()
+    element = root.find('oplus-feature[@name="oplus.software.powerkey_disbale_turnoff_torch"]')
+    root.remove(element)
+    xml.commit()
+
+
+@modified('system/system/framework/oplus-services.jar')
+def patch_oplus_services():
+    apk = ApkFile('system/system/framework/oplus-services.jar')
+    apk.decode()
+
+    log('移除 ADB 安装确认')
+    smali = apk.open_smali('com/android/server/pm/OplusPackageInstallInterceptManager.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'allowInterceptAdbInstallInInstallStage'
+    specifier.parameters = 'ILandroid/content/pm/PackageInstaller$SessionParams;Ljava/io/File;Ljava/lang/String;Landroid/content/pm/IPackageInstallObserver2;'
+    smali.method_return_boolean(specifier, False)
+
+    log('移除已激活 VPN 通知')
+    smali = apk.open_smali('com/android/server/connectivity/VpnExtImpl.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'showNotification'
+    specifier.parameters = 'Ljava/lang/String;IILjava/lang/String;Landroid/app/PendingIntent;Lcom/android/internal/net/VpnConfig;'
+    smali.method_nop(specifier)
+
+    apk.build()
+    for file in glob('system/system/framework/**/oplus-services.*', recursive=True):
+        if not os.path.samefile(apk.file, file):
+            os.remove(file)
+
+
 @modified('system_ext/priv-app/SystemUI/SystemUI.apk')
 def patch_system_ui():
     apk = ApkFile('system_ext/priv-app/SystemUI/SystemUI.apk')
@@ -165,46 +217,6 @@ def disable_launcher_clock_red_one():
     apk.build()
 
 
-@modified('system/system/framework/oplus-services.jar')
-def patch_oplus_services():
-    apk = ApkFile('system/system/framework/oplus-services.jar')
-    apk.decode()
-
-    log('移除 ADB 安装确认')
-    smali = apk.open_smali('com/android/server/pm/OplusPackageInstallInterceptManager.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'allowInterceptAdbInstallInInstallStage'
-    specifier.parameters = 'ILandroid/content/pm/PackageInstaller$SessionParams;Ljava/io/File;Ljava/lang/String;Landroid/content/pm/IPackageInstallObserver2;'
-    smali.method_return_boolean(specifier, False)
-
-    log('移除已激活 VPN 通知')
-    smali = apk.open_smali('com/android/server/connectivity/VpnExtImpl.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'showNotification'
-    specifier.parameters = 'Ljava/lang/String;IILjava/lang/String;Landroid/app/PendingIntent;Lcom/android/internal/net/VpnConfig;'
-    smali.method_nop(specifier)
-
-    apk.build()
-    for file in glob('system/system/framework/**/oplus-services.*', recursive=True):
-        if not os.path.samefile(apk.file, file):
-            os.remove(file)
-
-
-@modified('system_ext/priv-app/Settings/Settings.apk')
-def disable_sensitive_word_check():
-    log('禁用设备名称敏感词检查')
-    apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
-    apk.decode()
-
-    smali = apk.open_smali('com/oplus/settings/feature/deviceinfo/aboutphone/PhoneNameVerifyUtil.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'activeNeedServerVerify'
-    specifier.parameters = 'Ljava/lang/String;'
-    smali.method_return_boolean(specifier, False)
-
-    apk.build()
-
-
 @modified('system_ext/app/OplusCommercialEngineerMode/OplusCommercialEngineerMode.apk')
 def show_touchscreen_panel_info():
     log('显示工程模式中的屏生产信息')
@@ -227,22 +239,19 @@ def show_touchscreen_panel_info():
     apk.build()
 
 
-def remove_activity_start_dialog():
-    log('移除关联启动对话框')
-    xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
-    root = xml.get_root()
-    element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
-    root.remove(element)
-    xml.commit()
+@modified('system_ext/priv-app/Settings/Settings.apk')
+def disable_sensitive_word_check():
+    log('禁用设备名称敏感词检查')
+    apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
+    apk.decode()
 
+    smali = apk.open_smali('com/oplus/settings/feature/deviceinfo/aboutphone/PhoneNameVerifyUtil.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'activeNeedServerVerify'
+    specifier.parameters = 'Ljava/lang/String;'
+    smali.method_return_boolean(specifier, False)
 
-def turn_off_flashlight_with_power_key():
-    log('启用电源键关闭手电筒')
-    xml = XmlFile('system_ext/etc/permissions/com.oplus.features_config.xml')
-    root = xml.get_root()
-    element = root.find('oplus-feature[@name="oplus.software.powerkey_disbale_turnoff_torch"]')
-    root.remove(element)
-    xml.commit()
+    apk.build()
 
 
 @modified('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
@@ -329,6 +338,34 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
     apk.build()
 
 
+@modified('system_ext/app/NotificationCenter/NotificationCenter.apk')
+def show_icon_for_silent_notification():
+    log('允许显示静默通知的图标')
+    apk = ApkFile('system_ext/app/NotificationCenter/NotificationCenter.apk')
+    apk.decode()
+
+    smali = apk.open_smali('com/oplus/notificationmanager/fragments/main/MoreSettingFragment.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'onCreateView'
+    specifier.parameters = 'Landroid/view/LayoutInflater;Landroid/view/ViewGroup;Landroid/os/Bundle;'
+
+    old_body = smali.find_method(specifier)
+    pattern = '''\
+    const-string (?:[v|p]\\d+), "hide_silence_notification_icon_enable"
+
+    invoke-static {}, Lcom/oplus/notificationmanager/config/BaseFeatureOption;->isExpVersion\\(\\)Z
+
+    move-result (?:[v|p]\\d+)
+
+    invoke-static {(?:(?:[v|p]\\d+), ){3}(?:[v|p]\\d+)}, Lcom/oplus/notificationmanager/view/PerferenceExKt;->\
+initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String;Ljava/lang/Class;Z\\)Landroidx/preference/Preference;
+'''
+    new_body = re.sub(pattern, '', old_body)
+    smali.method_replace(old_body, new_body)
+
+    apk.build()
+
+
 @modified('my_stock/del-app/Calendar/Calendar.apk')
 def remove_calendar_ads():
     log('去除日历广告')
@@ -367,43 +404,6 @@ def remove_calendar_ads():
     smali.method_return_boolean(specifier, True)
 
     apk.build()
-
-
-@modified('system_ext/app/NotificationCenter/NotificationCenter.apk')
-def show_icon_for_silent_notification():
-    log('允许显示静默通知的图标')
-    apk = ApkFile('system_ext/app/NotificationCenter/NotificationCenter.apk')
-    apk.decode()
-
-    smali = apk.open_smali('com/oplus/notificationmanager/fragments/main/MoreSettingFragment.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'onCreateView'
-    specifier.parameters = 'Landroid/view/LayoutInflater;Landroid/view/ViewGroup;Landroid/os/Bundle;'
-
-    old_body = smali.find_method(specifier)
-    pattern = '''\
-    const-string (?:[v|p]\\d+), "hide_silence_notification_icon_enable"
-
-    invoke-static {}, Lcom/oplus/notificationmanager/config/BaseFeatureOption;->isExpVersion\\(\\)Z
-
-    move-result (?:[v|p]\\d+)
-
-    invoke-static {(?:(?:[v|p]\\d+), ){3}(?:[v|p]\\d+)}, Lcom/oplus/notificationmanager/view/PerferenceExKt;->\
-initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String;Ljava/lang/Class;Z\\)Landroidx/preference/Preference;
-'''
-    new_body = re.sub(pattern, '', old_body)
-    smali.method_replace(old_body, new_body)
-
-    apk.build()
-
-
-def replace_installer():
-    log('替换 PUIPackageInstaller')
-    shutil.rmtree('system_ext/priv-app/OppoPackageInstaller')
-
-    pui_dir = 'system_ext/priv-app/PUIPackageInstaller'
-    os.makedirs(pui_dir)
-    shutil.copy(f'{MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
 
 
 def patch_services():
@@ -885,16 +885,18 @@ def not_update_modified_app():
 
 def run_on_rom():
     rm_files()
+    replace_installer()
+    remove_activity_start_dialog()
+    turn_off_flashlight_with_power_key()
+    patch_oplus_services()
     patch_system_ui()
     disable_lock_screen_red_one()
     disable_launcher_clock_red_one()
-    patch_oplus_services()
-    disable_sensitive_word_check()
-    remove_activity_start_dialog()
     show_touchscreen_panel_info()
+    disable_sensitive_word_check()
     show_netmask_and_gateway()
+    show_icon_for_silent_notification()
     remove_calendar_ads()
-    replace_installer()
 
 
 def run_on_module():

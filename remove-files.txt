@@ -94,7 +94,6 @@ my_stock/priv-app/LinktoWindows
 my_stock/priv-app/MDSService
 my_stock/priv-app/OplusScreenRecorder
 my_stock/priv-app/OplusThirdKit
-my_stock/priv-app/SOSHelper
 my_stock/priv-app/dmp
 my_stock/del-app/BackupAndRestore
 my_stock/del-app/BrowserVideo
