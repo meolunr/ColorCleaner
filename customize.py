@@ -397,13 +397,13 @@ initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String
     apk.build()
 
 
-def replace_analytics():
-    log('替换 BlankAnalytics')
-    analytics = 'product/app/AnalyticsCore/AnalyticsCore.apk'
-    if os.path.exists(analytics):
-        os.remove(analytics)
-        shutil.rmtree('product/app/AnalyticsCore/oat')
-        shutil.copy(f'{MISC_DIR}/BlankAnalytics.apk', analytics)
+def replace_installer():
+    log('替换 PUIPackageInstaller')
+    shutil.rmtree('system_ext/priv-app/OppoPackageInstaller')
+
+    pui_dir = 'system_ext/priv-app/PUIPackageInstaller'
+    os.makedirs(pui_dir)
+    shutil.copy(f'{MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
 
 
 def patch_services():
@@ -894,6 +894,7 @@ def run_on_rom():
     show_touchscreen_panel_info()
     show_netmask_and_gateway()
     remove_calendar_ads()
+    replace_installer()
 
 
 def run_on_module():
