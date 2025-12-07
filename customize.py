@@ -6,6 +6,7 @@ import shutil
 import string
 import sys
 from glob import glob
+from pathlib import Path
 from zipfile import ZipFile
 
 import config
@@ -17,7 +18,7 @@ from ccglobal import MISC_DIR, log
 _MODIFIED_FLAG = b'CC-Mod'
 
 
-def modified(file: str):
+def modified(file: str, move: bool = False):
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not os.path.isfile(file):
@@ -26,14 +27,26 @@ def modified(file: str):
             comment = f.comment
             f.close()
 
+
+            with ZipFile(file, 'r') as f:
+                comment = f.comment
             if comment != _MODIFIED_FLAG:
                 result = func(*args, **kwargs)
                 with ZipFile(file, 'a') as f:
                     f.comment = _MODIFIED_FLAG
                 oat = f'{os.path.dirname(file)}/oat'
                 if os.path.exists(oat):
+                func_result = func(*args, **kwargs)
+
+
+                dir_path = Path(file).parent
+                oat = dir_path.joinpath('oat')
+                if oat.exists():
                     shutil.rmtree(oat)
-                return result
+                if move:
+                    shutil.move(dir_path, dir_path.parent.parent.joinpath('app'))
+
+                return func_result
             else:
                 return None
 
@@ -199,7 +212,7 @@ def disable_lock_screen_red_one():
     apk.build()
 
 
-@modified('my_stock/del-app/Clock/Clock.apk')
+@modified('my_stock/del-app/Clock/Clock.apk', True)
 def disable_launcher_clock_red_one():
     log('禁用桌面时钟小部件红1')
     apk = ApkFile('my_stock/del-app/Clock/Clock.apk')
@@ -366,7 +379,7 @@ initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String
     apk.build()
 
 
-@modified('my_stock/del-app/Calendar/Calendar.apk')
+@modified('my_stock/del-app/Calendar/Calendar.apk', True)
 def remove_calendar_ads():
     log('去除日历广告')
     apk = ApkFile('my_stock/del-app/Calendar/Calendar.apk')
@@ -884,7 +897,6 @@ def not_update_modified_app():
 
 
 def run_on_rom():
-    rm_files()
     replace_installer()
     remove_activity_start_dialog()
     turn_off_flashlight_with_power_key()
@@ -897,6 +909,7 @@ def run_on_rom():
     show_netmask_and_gateway()
     show_icon_for_silent_notification()
     remove_calendar_ads()
+    rm_files()
 
 
 def run_on_module():

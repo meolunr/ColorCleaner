@@ -9,6 +9,7 @@ import subprocess
 import time
 from datetime import datetime
 from glob import glob
+from pathlib import Path
 
 import appupdate
 import config
@@ -25,10 +26,9 @@ def dump_payload(file: str):
 
 
 def remove_official_recovery():
-    recovery_img = 'images/recovery.img'
-    if os.path.exists(recovery_img):
-        log('去除官方 Recovery')
-        os.remove(recovery_img)
+    log('去除官方 Recovery')
+    recovery = Path('images/recovery.img')
+    recovery.unlink(True)
 
 
 def unpack_img():
@@ -103,33 +103,6 @@ def disable_avb_and_dm_verity():
             f.seek(0)
             f.truncate()
             f.writelines(lines)
-
-
-def handle_pangu_overlay():
-    if not os.path.isdir('product/pangu'):
-        return
-    log('处理盘古架构')
-    lines = []
-    with open('config/product_file_contexts', 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.startswith('/product/pangu'):
-                splits = line.split(' ')
-                path = splits[0][14:]
-                if not os.path.exists(f'system{path}'):
-                    lines.append(f'/system{path} {splits[1]}')
-    with open('config/system_file_contexts', 'a', encoding='utf-8', newline='') as f:
-        f.writelines(lines)
-
-    lines.clear()
-    with open('config/product_fs_config', 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.startswith('product/pangu'):
-                pos = line.index(' ')
-                path = line[:pos][13:]
-                if not os.path.exists(f'system{path}'):
-                    lines.append(f'system{path}{line[pos:]}')
-    with open('config/system_fs_config', 'a', encoding='utf-8', newline='') as f:
-        f.writelines(lines)
 
 
 def repack_img():
@@ -240,9 +213,8 @@ def compress_zip():
     for img in os.listdir('images'):
         cmd.append(f'images/{img}')
 
-    flash_script_dir = 'META-INF/com/google/android'
-    if not os.path.exists(flash_script_dir):
-        os.makedirs(flash_script_dir)
+    flash_script_dir = Path('META-INF/com/google/android')
+    flash_script_dir.mkdir(parents=True, exist_ok=True)
     shutil.move('update-binary', f'{flash_script_dir}/update-binary')
     shutil.copy(f'{MISC_DIR}/zstd', f'{flash_script_dir}/zstd')
 

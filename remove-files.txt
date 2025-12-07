@@ -52,8 +52,6 @@ my_product/priv-app/GmsCore
 my_product/priv-app/GoogleOneTimeInitializer
 my_product/priv-app/GooglePlayServicesUpdater
 my_product/priv-app/RemoteControl
-my_product/del-app/HeytapReader
-my_product/del-app/SogouInput_U_Product_Del
 my_product/non_overlay/app/GooglePrintRecommendationService
 my_product/non_overlay/priv-app/GoogleServicesFramework
 my_stock/app/ADS
@@ -95,26 +93,23 @@ my_stock/priv-app/MDSService
 my_stock/priv-app/OplusScreenRecorder
 my_stock/priv-app/OplusThirdKit
 my_stock/priv-app/dmp
-my_stock/del-app/BackupAndRestore
-my_stock/del-app/BrowserVideo
-my_stock/del-app/FamilyGuard
-my_stock/del-app/FileManager
-my_stock/del-app/Gamecenter
-my_stock/del-app/Health
-my_stock/del-app/KeKeUserCenterMember
-my_stock/del-app/Music
-my_stock/del-app/OPBreathMode
-my_stock/del-app/OPCommunity
-my_stock/del-app/OPPOStore
-my_stock/del-app/OplusDocumentsReader
-my_stock/del-app/OplusEmail
-my_stock/del-app/OplusQuickGame
-my_stock/del-app/OppoCompass2
-my_stock/del-app/OppoTranslation
-my_stock/del-app/RiderMode
-my_stock/del-app/Tips
 my_stock/non_overlay/app/OBrain
 my_stock/opex/Omoji.opex
+my_product/del-app
+my_stock/del-app
+# 红外遥控
+# 计算器
+# 日历
+# 时钟
+# 钱包
+# 主题商店
+# 无线耳机
+# 录音
+# 便签
+# 天气
+# 小布指令
+# 逍遥游
+# 银联可信服务安全组件
 
 # 系统更新相关
 # /my_stock/app/RomUpdate
