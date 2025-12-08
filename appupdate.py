@@ -125,7 +125,7 @@ def read_record():
 def write_record(*, rom: set = None, module: set = None):
     rom_to_be_written, module_to_be_written = read_record()
     log('写入系统应用更新记录')
-    with open(UPDATED_APP_JSON, 'w+', encoding='utf-8', newline='\n') as f:
+    with open(UPDATED_APP_JSON, 'w+', encoding='utf-8', newline='') as f:
         if rom is not None:
             rom_to_be_written = rom
         if module is not None:

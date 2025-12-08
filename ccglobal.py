@@ -3,6 +3,7 @@ from datetime import datetime
 
 LIB_DIR = f'{sys.path[0]}/lib'
 MISC_DIR = f'{sys.path[0]}/misc'
+PARTITION_FILESYSTEM_JSON = 'config/partition_filesystem.json'
 UPDATED_APP_JSON = 'product/UpdatedApp.json'
 
 

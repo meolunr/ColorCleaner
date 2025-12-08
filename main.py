@@ -15,7 +15,7 @@ import appupdate
 import config
 import customize
 import vbmeta
-from ccglobal import LIB_DIR, MISC_DIR, UPDATED_APP_JSON, log
+from ccglobal import LIB_DIR, MISC_DIR, PARTITION_FILESYSTEM_JSON, UPDATED_APP_JSON, log
 from util import imgfile, template
 
 
@@ -54,7 +54,7 @@ def unpack_img():
 
     if not os.path.isdir('config'):
         os.mkdir('config')
-    with open('config/partition_filesystem.json', 'w', encoding='utf-8', newline='\n') as f:
+    with open(PARTITION_FILESYSTEM_JSON, 'w', encoding='utf-8') as f:
         json.dump(partition_filesystem, f, indent=4)
 
 
@@ -108,7 +108,7 @@ def disable_avb_and_dm_verity():
 def repack_img():
     mkfs_erofs = f'{LIB_DIR}/mkfs.erofs.exe'
     magiskboot = f'{LIB_DIR}/magiskboot.exe'
-    with open('config/partition_filesystem.json', 'r', encoding='utf-8') as f:
+    with open(PARTITION_FILESYSTEM_JSON, 'r', encoding='utf-8') as f:
         partition_filesystem: dict = json.load(f)
 
     for partition in config.unpack_partitions:
