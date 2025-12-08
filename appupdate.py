@@ -4,14 +4,12 @@ import os
 import re
 import shutil
 import subprocess
-import xml.etree.ElementTree as eTree
 from enum import Enum, auto
 from zipfile import ZipFile
 
 import config
 from build.apkfile import ApkFile
-from build.xml import XmlFile
-from ccglobal import LIB_DIR, MISC_DIR, UPDATED_APP_JSON, PRODUCT_PRIVILEGE_PERMISSION_XML, PRIVILEGE_PERMISSIONS, log
+from ccglobal import LIB_DIR, MISC_DIR, UPDATED_APP_JSON, log
 from util import adb, template
 
 
@@ -182,38 +180,6 @@ def pull_apk_from_phone(app: NewApp):
         subprocess.run([_7z, 'e', '-aoa', app.system_path_rom_with_apk, 'lib/arm64-v8a', f'-o{app.system_path_rom}/lib/arm64'], stdout=subprocess.DEVNULL)
 
 
-def update_privilege_permission(apps: set[NewApp]):
-    apps = {x for x in apps if x.system_path.startswith('/product/priv-app/')}
-    if len(apps) == 0:
-        return
-
-    is_rom_xml = os.path.isfile(PRODUCT_PRIVILEGE_PERMISSION_XML)
-    if not is_rom_xml:
-        # Pull from phone to add into ksu module
-        os.makedirs(os.path.dirname(PRODUCT_PRIVILEGE_PERMISSION_XML))
-        adb.pull(f'/{PRODUCT_PRIVILEGE_PERMISSION_XML}', PRODUCT_PRIVILEGE_PERMISSION_XML)
-    xml = XmlFile(PRODUCT_PRIVILEGE_PERMISSION_XML)
-    root = xml.get_root()
-
-    is_xml_updated = False
-    for app in apps:
-        element = root.find(f"privapp-permissions[@package='{app.package}']")
-        for perm in ApkFile(app.system_path_rom_with_apk).uses_permission() & PRIVILEGE_PERMISSIONS:
-            if element.find(f"permission[@name='{perm}']") is None:
-                is_xml_updated = is_xml_updated or True
-                log(f'新增特许权限: {app.package} -> {perm}')
-                new_permission = eTree.Element('permission')
-                new_permission.set('name', perm)
-                element.append(new_permission)
-
-    if is_xml_updated:
-        eTree.indent(root, '   ')
-        xml.commit()
-    else:
-        if not is_rom_xml:
-            shutil.rmtree('product/etc')
-
-
 def run_on_rom():
     if check_adb_device():
         return
@@ -231,8 +197,15 @@ def run_on_rom():
         if os.path.exists(oat):
             shutil.rmtree(oat)
 
-    update_privilege_permission(apps)
     write_record(rom=packages, module=set())
+    with open('vendor/build.prop', 'r+', encoding='utf-8', newline='') as f:
+        lines = []
+        for line in f.readlines():
+            if not line.startswith('ro.control_privapp_permissions=enforce'):
+                lines.append(line)
+        f.seek(0)
+        f.truncate()
+        f.writelines(lines)
 
 
 def run_on_module():
@@ -255,7 +228,6 @@ def run_on_module():
         package_cache_output.write(f'rm -f /data/system/package_cache/*/{os.path.basename(app.system_path)}-*\n')
         mount_output.write(f'mount -o bind $MODDIR/{app.system_path_module} {app.system_path}\n')
 
-    update_privilege_permission(apps)
     write_record(module=packages)
     template.substitute(f'{MISC_DIR}/module_template/AppUpdate/customize.sh',
                         var_remove_oat=remove_oat_output.getvalue(), var_remove_data_app=remove_data_app_output.getvalue())
