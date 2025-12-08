@@ -228,8 +228,8 @@ def compress_zip():
     log(f'刷机包文件: {os.path.abspath(file_name).replace('\\', '/')}')
 
 
-def make_update_module():
-    log('构建系统应用更新模块')
+def make_module():
+    log('构建系统更新模块')
     appupdate.run_on_module()
     if not os.path.isfile(UPDATED_APP_JSON):
         return
@@ -266,23 +266,31 @@ def make_rom(args: argparse.Namespace):
 
 def main():
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('zip', help='需要处理的 ROM 包')
     parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
-    parser.add_argument('-k', '--kernel', help='自定义内核镜像')
     parser.add_argument('-o', '--out-dir', help='输出文件夹', type=str, default='out')
-    parser.add_subparsers().add_parser('appupdate', help='打包系统应用更新模块')
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    rom_parser = subparsers.add_parser('rom', help='制作全量包', add_help=False)
+    rom_parser.add_argument('zip', help='需要处理的 ROM 包')
+    rom_parser.add_argument('-k', '--kernel', help='自定义内核镜像')
+    rom_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
+
+    module_parser = subparsers.add_parser('module', help='制作系统更新模块', add_help=False)
+    module_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
+
     args = parser.parse_args()
 
     os.mkdir(args.out_dir)
     os.chdir(args.out_dir)
 
     start = datetime.now()
-    if args.zip != 'appupdate':
-        if args.kernel:
-            config.unpack_partitions.add('boot')
-        make_rom(args)
-    else:
-        make_update_module()
+    match args.command:
+        case 'rom':
+            if args.kernel:
+                config.unpack_partitions.add('boot')
+            make_rom(args)
+        case 'module':
+            make_module()
     result = datetime.now() - start
     log(f'已完成, 耗时 {int(result.seconds / 60)} 分 {result.seconds % 60} 秒')
 
