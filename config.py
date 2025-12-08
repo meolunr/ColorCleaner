@@ -12,6 +12,10 @@ MODIFY_PACKAGE = (
     'com.xiaomi.trustservice',
     'com.xiaomi.market'
 )
+MODIFY_DELETABLE_APK = (
+    'my_stock/del-app/Clock/Clock.apk',
+    'my_stock/del-app/Calendar/Calendar.apk'
+)
 
 unpack_partitions = {'system', 'system_ext', 'product', 'vendor', 'my_manifest', 'my_product', 'my_stock'}
 device: str

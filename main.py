@@ -105,6 +105,13 @@ def disable_avb_and_dm_verity():
             f.writelines(lines)
 
 
+def move_deletable_apk():
+    log('移动可删除的系统应用')
+    for item in config.MODIFY_DELETABLE_APK:
+        dir_path = Path(item).parent
+        shutil.move(dir_path, dir_path.parent.parent.joinpath('app'))
+
+
 def repack_img():
     mkfs_erofs = f'{LIB_DIR}/mkfs.erofs.exe'
     magiskboot = f'{LIB_DIR}/magiskboot.exe'
@@ -255,7 +262,7 @@ def make_rom(args: argparse.Namespace):
     custom_kernel(args.kernel)
     patch_vbmeta()
     disable_avb_and_dm_verity()
-    handle_pangu_overlay()
+    move_deletable_apk()
     appupdate.run_on_rom()
     customize.run_on_rom()
     repack_img()
@@ -279,7 +286,6 @@ def main():
     module_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
 
     args = parser.parse_args()
-
     os.mkdir(args.out_dir)
     os.chdir(args.out_dir)
 
