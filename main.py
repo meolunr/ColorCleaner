@@ -215,8 +215,8 @@ def compress_zip():
 
     flash_script_dir = Path('META-INF/com/google/android')
     flash_script_dir.mkdir(parents=True, exist_ok=True)
-    shutil.move('update-binary', f'{flash_script_dir}/update-binary')
-    shutil.copy(f'{MISC_DIR}/zstd', f'{flash_script_dir}/zstd')
+    shutil.move('update-binary', flash_script_dir.joinpath('update-binary'))
+    shutil.copy(f'{MISC_DIR}/zstd', flash_script_dir.joinpath('zstd'))
 
     subprocess.run(cmd, check=True)
 

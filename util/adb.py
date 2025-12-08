@@ -1,5 +1,6 @@
 import os
 import subprocess
+from os import PathLike
 
 from ccglobal import MISC_DIR, log
 
@@ -24,9 +25,9 @@ def push(src: str, dst: str):
     execute(f'rm -rf {tmp_file}')
 
 
-def pull(src: str, dst: str):
+def pull(src: str, dst: str | PathLike[str]):
     log(f'拉取设备文件: {src}')
-    subprocess.run(['adb', 'pull', src, dst], stdout=subprocess.DEVNULL)
+    subprocess.run(['adb', 'pull', src, os.fspath(dst)], stdout=subprocess.DEVNULL)
 
 
 def install_test_module():
@@ -70,6 +71,10 @@ def module_overlay(phone_path: str):
         module_push(f'system{phone_path}', phone_path)
     else:
         module_push(phone_path[1:], phone_path)
+
+
+def exists(phone_path: str):
+    return execute(f'test -e {phone_path}') == 0
 
 
 def is_dir(phone_path: str):

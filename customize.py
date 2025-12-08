@@ -23,19 +23,10 @@ def modified(file: str, move: bool = False):
         def wrapper(*args, **kwargs):
             if not os.path.isfile(file):
                 return None
-            f = ZipFile(file, 'r')
-            comment = f.comment
-            f.close()
-
 
             with ZipFile(file, 'r') as f:
                 comment = f.comment
             if comment != _MODIFIED_FLAG:
-                result = func(*args, **kwargs)
-                with ZipFile(file, 'a') as f:
-                    f.comment = _MODIFIED_FLAG
-                oat = f'{os.path.dirname(file)}/oat'
-                if os.path.exists(oat):
                 func_result = func(*args, **kwargs)
 
 
