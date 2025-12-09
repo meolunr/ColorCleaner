@@ -9,7 +9,7 @@ import subprocess
 import time
 from datetime import datetime
 from glob import glob
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import appupdate
 import config
@@ -108,7 +108,7 @@ def disable_avb_and_dm_verity():
 def move_deletable_apk():
     log('移动可删除的系统应用')
     for item in config.MODIFY_DELETABLE_APK:
-        dir_path = Path(item).parent
+        dir_path = PurePath(item).parent
         shutil.move(dir_path, dir_path.parent.parent.joinpath('app'))
 
 
@@ -274,18 +274,19 @@ def make_rom(args: argparse.Namespace):
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
-    parser.add_argument('-o', '--out-dir', help='输出文件夹', type=str, default='out')
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    rom_parser = subparsers.add_parser('rom', help='制作全量包', add_help=False)
+    out_parser = argparse.ArgumentParser(add_help=False)
+    out_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
+    out_parser.add_argument('-o', '--out-dir', help='输出文件夹', type=str, default='out')
+
+    rom_parser = subparsers.add_parser('rom', help='制作全量包', parents=[out_parser], add_help=False)
     rom_parser.add_argument('zip', help='需要处理的 ROM 包')
     rom_parser.add_argument('-k', '--kernel', help='自定义内核镜像')
-    rom_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
 
-    module_parser = subparsers.add_parser('module', help='制作系统更新模块', add_help=False)
-    module_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
-
+    subparsers.add_parser('module', help='制作系统更新模块', parents=[out_parser], add_help=False)
     args = parser.parse_args()
+
     os.mkdir(args.out_dir)
     os.chdir(args.out_dir)
 
