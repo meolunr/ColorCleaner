@@ -366,6 +366,23 @@ initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String
     apk.build()
 
 
+@modified('my_stock/app/MCS/MCS.apk')
+def remove_system_notification_ads():
+    log('去除系统通知广告')
+    apk = ApkFile('my_stock/app/MCS/MCS.apk')
+    apk.decode()
+
+    smali = apk.find_smali('"excellent recommendation"', r'"\u7cbe\u5f69\u63a8\u8350"').pop()
+    specifier = MethodSpecifier()
+    specifier.is_static = True
+    specifier.parameters = 'Landroid/content/Context;Z'
+    specifier.keywords.add('"excellent recommendation"')
+    specifier.keywords.add(r'"\u7cbe\u5f69\u63a8\u8350"')
+    smali.method_nop(specifier)
+
+    apk.build()
+
+
 @modified('my_stock/app/Calendar/Calendar.apk')
 def remove_calendar_ads():
     log('去除日历广告')
@@ -896,6 +913,7 @@ def run_on_rom():
     disable_sensitive_word_check()
     show_netmask_and_gateway()
     show_icon_for_silent_notification()
+    remove_system_notification_ads()
     remove_calendar_ads()
 
 
