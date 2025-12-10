@@ -1,11 +1,13 @@
 import os
 import subprocess
-from os import PathLike
 
+import config
 from ccglobal import MISC_DIR, log
 
+_OVERLAYFS = True
 _DATA_TMP_DIR = '/data/local/tmp'
 _MODULE_DIR = '/data/adb/modules/colorcleaner'
+_OVERLAYFS_MODULE_DIR = '/data/adb/metamodule/mnt/colorcleaner'
 
 
 def execute(command: str):
@@ -18,52 +20,75 @@ def getoutput(command: str):
 
 
 def push(src: str, dst: str):
-    tmp_file = f'{_DATA_TMP_DIR}/{os.path.basename(src)}'
-    subprocess.run(['adb', 'push', src, _DATA_TMP_DIR], stdout=subprocess.DEVNULL)
-    # Use cp and rm commands to avoid moving file permissions simultaneously
-    execute(f'cp -rf {tmp_file} {dst}')
-    execute(f'rm -rf {tmp_file}')
+    if dst.startswith('/sdcard'):
+        subprocess.run(['adb', 'push', src, dst], stdout=subprocess.DEVNULL)
+    else:
+        subprocess.run(['adb', 'push', src, _DATA_TMP_DIR], stdout=subprocess.DEVNULL)
+        tmp_file = f'{_DATA_TMP_DIR}/{os.path.basename(src)}'
+        # Use cp and rm commands to avoid moving file permissions simultaneously
+        execute(f'cp -rf {tmp_file} {dst}')
+        execute(f'rm -rf {tmp_file}')
 
 
-def pull(src: str, dst: str | PathLike[str]):
+def pull(src: str, dst: str | os.PathLike[str]):
     log(f'拉取设备文件: {src}')
     subprocess.run(['adb', 'pull', src, os.fspath(dst)], stdout=subprocess.DEVNULL)
 
 
 def install_test_module():
-    subprocess.run(['adb', 'push', f'{MISC_DIR}/module_template/CCTestModule.zip', '/sdcard'], stdout=subprocess.DEVNULL)
-    execute('ksud module install /sdcard/CCTestModule.zip')
-    execute('rm -f /sdcard/CCTestModule.zip')
-    log(f'已安装 CC 测试模块，重启设备后生效')
+    if _OVERLAYFS:
+        push(f'{MISC_DIR}/module_template/CCTestModule-OverlayFS.zip', '/sdcard/CCTestModule.zip')
+        execute('ksud module install /sdcard/CCTestModule.zip')
+        execute('rm /sdcard/CCTestModule.zip')
+
+        for partition in config.unpack_partitions:
+            if partition == 'system':
+                continue
+            partition_dir = f'{_OVERLAYFS_MODULE_DIR}/{partition}'
+            execute(f'mkdir {partition_dir}')
+            execute(f'busybox chcon --reference=/{partition} {partition_dir}')
+        log(f'已安装 CC 测试模块')
+    else:
+        push(f'{MISC_DIR}/module_template/CCTestModule-MagicMount.zip', '/sdcard/CCTestModule.zip')
+        execute('ksud module install /sdcard/CCTestModule.zip')
+        execute('rm /sdcard/CCTestModule.zip')
+        log(f'已安装 CC 测试模块，重启设备后生效')
 
 
 def module_push(src_path: str, phone_path: str):
     log(f'CCTest 文件推送: {phone_path}')
-    if phone_path.startswith('/system/'):
-        overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(phone_path)}'
+    if _OVERLAYFS:
+        overlay_dir_path = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(phone_path)}'
     else:
-        overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(f'/system{phone_path}')}'
+        if phone_path.startswith('/system/'):
+            overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(phone_path)}'
+        else:
+            overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(f'/system{phone_path}')}'
     execute(f'mkdir -p {overlay_dir_path}')
     push(src_path, overlay_dir_path)
 
 
 def module_rm(phone_path: str):
     log(f'CCTest 文件删除: {phone_path}')
-    if phone_path.startswith('/system/'):
-        rm_path = phone_path
+    if _OVERLAYFS:
+        rm_path_parent = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(phone_path)}'
     else:
-        rm_path = f'/system{phone_path}'
+        if phone_path.startswith('/system/'):
+            rm_path_parent = f'{_MODULE_DIR}{os.path.dirname(phone_path)}'
+        else:
+            rm_path_parent = f'{_MODULE_DIR}/system{os.path.dirname(phone_path)}'
 
     if phone_path.startswith('/my_'):
+        rm_path = f'{rm_path_parent}/{os.path.basename(phone_path)}'
         if is_dir(phone_path):
-            execute(f'mkdir -p {_MODULE_DIR}{rm_path}')
-            execute(f'touch {_MODULE_DIR}{rm_path}/.replace')
+            execute(f'mkdir -p {rm_path}')
+            execute(f'touch {rm_path}/.replace')
         else:
-            execute(f'mkdir -p {_MODULE_DIR}{os.path.dirname(rm_path)}')
-            execute(f'touch {_MODULE_DIR}{rm_path}')
+            execute(f'mkdir -p {rm_path_parent}')
+            execute(f'touch {rm_path}')
     else:
-        execute(f'mkdir -p {_MODULE_DIR}{os.path.dirname(rm_path)}')
-        execute(f'mknod {_MODULE_DIR}{rm_path} c 0 0')
+        execute(f'mkdir -p {rm_path_parent}')
+        execute(f'mknod {_OVERLAYFS_MODULE_DIR}{phone_path} c 0 0')
 
 
 def module_overlay(phone_path: str):

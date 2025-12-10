@@ -20,6 +20,7 @@ waitForVolumeKey() {
 			[ "$isUpKey" != "" ] && return 0 || return 1
 			break
 		fi
+		sleep 0.1
 	done
 }
 

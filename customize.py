@@ -29,6 +29,8 @@ def modified(file: str):
             if comment != _MODIFIED_FLAG:
                 func_result = func(*args, **kwargs)
 
+                with ZipFile(file, 'a') as f:
+                    f.comment = _MODIFIED_FLAG
 
                 oat = Path(file).parent.joinpath('oat')
                 if oat.exists():
