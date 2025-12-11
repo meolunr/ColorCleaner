@@ -1,6 +1,6 @@
 id=ccappupdate
-name=CC系统应用更新
+name=CC系统更新
 version=$var_version
 versionCode=$var_version_code
 author=Meolunr
-description=ColorCleaner 系统应用更新模块
+description=ColorCleaner 系统更新模块

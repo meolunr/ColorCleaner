@@ -25,7 +25,6 @@ class NewApp(object):
         self.new_apk = new_apk
         self.rom_old_dir = self._combine_rom_path(old_dir)
         self.module_old_dir = self._combine_module_path(old_dir)
-        self.rom_old_apk = f'{self.rom_old_dir}/{os.path.basename(self.rom_old_dir)}.apk'
         self.source = None
         self.version_code = None
 
@@ -39,10 +38,7 @@ class NewApp(object):
 
     @staticmethod
     def _combine_module_path(old_dir):
-        if not old_dir.startswith('/system/'):
-            return f'system{old_dir}'
-        else:
-            return old_dir[1:]
+        return old_dir[1:]
 
     @staticmethod
     def _get_real_old_dir(old_dir):
@@ -187,16 +183,18 @@ def fetch_updated_app():
 
 def pull_apk_from_phone(app: NewApp):
     adb.pull(app.new_apk, app.rom_old_apk)
+def pull_apk_from_phone(new_apk: str, old_apk: str):
+    adb.pull(new_apk, old_apk)
 
-    extract_lib = ApkFile(app.rom_old_apk).extract_native_libs()
+    extract_lib = ApkFile(old_apk).extract_native_libs()
     if extract_lib is None:
-        with ZipFile(app.rom_old_apk) as f:
+        with ZipFile(old_apk) as f:
             dirs = {x.split('/')[1] for x in f.namelist() if x.startswith('lib/')}
             extract_lib = len(dirs) > 1
 
     if extract_lib:
         _7z = f'{LIB_DIR}/7za.exe'
-        subprocess.run([_7z, 'e', '-aoa', app.rom_old_apk, 'lib/arm64-v8a', f'-o{app.rom_old_dir}/lib/arm64'], stdout=subprocess.DEVNULL)
+        subprocess.run([_7z, 'e', '-aoa', old_apk, 'lib/arm64-v8a', f'-o{os.path.dirname(old_apk)}/lib/arm64'], stdout=subprocess.DEVNULL)
 
 
 def run_on_rom():
@@ -205,11 +203,12 @@ def run_on_rom():
     apps = fetch_updated_app()
     packages = set()
     for app in apps:
-        if app.version_code <= ApkFile(app.rom_old_apk).version_code():
+        old_apk = f'{app.rom_old_dir}/{os.path.basename(app.rom_old_dir)}.apk'
+        if app.version_code <= ApkFile(old_apk).version_code():
             # Oplus has updated the apk in ROM
             continue
         log(f'更新系统应用: {app.rom_old_dir}')
-        pull_apk_from_phone(app)
+        pull_apk_from_phone(app.new_apk, old_apk)
         packages.add(app.package)
 
         oat = f'{app.rom_old_dir}/oat'
@@ -235,20 +234,18 @@ def run_on_module():
     remove_oat_output = io.StringIO()
     remove_data_app_output = io.StringIO()
     package_cache_output = io.StringIO()
-    mount_output = io.StringIO()
 
     for app in apps:
         log(f'更新系统应用: {app.module_old_dir}')
-        os.makedirs(app.rom_old_dir)
-        pull_apk_from_phone(app)
+        os.makedirs(app.module_old_dir)
+        apk_name = os.path.basename(app.module_old_dir)
+        pull_apk_from_phone(app.new_apk, f'{app.module_old_dir}/{apk_name}.apk')
         packages.add(app.package)
         remove_oat_output.write(f'/{app.module_old_dir}/oat\n')
         remove_data_app_output.write(f'removeDataApp {app.package}\n')
-        package_cache_output.write(f'rm -f /data/system/package_cache/*/{os.path.basename(app.module_old_dir)}-*\n')
-        # mount_output.write(f'mount -o bind $MODDIR/{app.module_old_dir} {app.old_dir}\n')  暂未使用，待测试
+        package_cache_output.write(f'rm -f /data/system/package_cache/*/{apk_name}-*\n')
 
     write_record(module=packages)
     template.substitute(f'{MISC_DIR}/module_template/AppUpdate/customize.sh',
                         var_remove_oat=remove_oat_output.getvalue(), var_remove_data_app=remove_data_app_output.getvalue())
     template.substitute(f'{MISC_DIR}/module_template/AppUpdate/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/post-fs-data.sh.bak', var_mount=mount_output.getvalue())
