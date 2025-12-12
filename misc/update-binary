@@ -10,13 +10,13 @@ print() {
 
 waitForVolumeKey() {
 	print "- 按音量[+]选择"是"，按音量[-]选择"否""
-	keyInfo=true
+	local keyInfo=true
 	while $keyInfo; do
 		keyInfo=$(getevent -qlc 1 | grep KEY_VOLUME)
 		if [ "$keyInfo" == "" ]; then
 			continue
 		else
-			isUpKey=$(echo $keyInfo | grep KEY_VOLUMEUP)
+			local isUpKey=$(echo $keyInfo | grep KEY_VOLUMEUP)
 			[ "$isUpKey" != "" ] && return 0 || return 1
 			break
 		fi
@@ -43,14 +43,14 @@ remapSuper() {
 
 lookupPackagePath() {
 	for i in $(ls /data/app); do
-		package=$(ls "/data/app/$i" | cut -d '-' -f 1)
+		local package=$(ls "/data/app/$i" | cut -d '-' -f 1)
 		echo "$package:/data/app/$i" >> $TMPDIR/PackagePath.txt
 	done
 }
 
 removeDataApp() {
-	package=$(grep "^$1:" $TMPDIR/PackagePath.txt)
-	path=$(echo $package | cut -d ':' -f 2)
+	local package=$(grep "^$1:" $TMPDIR/PackagePath.txt)
+	local path=$(echo $package | cut -d ':' -f 2)
 	if [ -n "$path" ]; then
 		rm -rf "$path"
 	fi

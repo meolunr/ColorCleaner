@@ -248,9 +248,9 @@ def make_module():
             shutil.move(partition, f'system/{partition}')
 
     version_code = time.strftime('%Y%m%d')
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/module.prop', var_version=time.strftime('%Y.%m.%d'), var_version_code=version_code)
+    template.substitute(f'{MISC_DIR}/module_template/Patch/module.prop', var_version=time.strftime('%Y.%m.%d'), var_version_code=version_code)
     _7z = f'{LIB_DIR}/7za.exe'
-    subprocess.run([_7z, 'a', f'CC_AppUpdate_{version_code}.zip'] + os.listdir(), check=True)
+    subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip'] + os.listdir(), check=True)
 
 
 def make_rom(args: argparse.Namespace):

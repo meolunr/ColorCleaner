@@ -157,6 +157,9 @@ def fetch_updated_app():
     path_map_data = get_app_in_data()
     path_map_system = get_app_in_system()
     for package, new_apk in path_map_data.items():
+        # Skip heytap mobile service
+        if package == 'com.heytap.htms':
+            continue
         app = NewApp(package, new_apk, path_map_system[package])
         app.source = NewApp.Source.DATA
         app_map[package] = app
@@ -181,8 +184,6 @@ def fetch_updated_app():
     return set(app_map.values())
 
 
-def pull_apk_from_phone(app: NewApp):
-    adb.pull(app.new_apk, app.rom_old_apk)
 def pull_apk_from_phone(new_apk: str, old_apk: str):
     adb.pull(new_apk, old_apk)
 
@@ -246,6 +247,6 @@ def run_on_module():
         package_cache_output.write(f'rm -f /data/system/package_cache/*/{apk_name}-*\n')
 
     write_record(module=packages)
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/customize.sh',
+    template.substitute(f'{MISC_DIR}/module_template/Patch/customize.sh',
                         var_remove_oat=remove_oat_output.getvalue(), var_remove_data_app=remove_data_app_output.getvalue())
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())
+    template.substitute(f'{MISC_DIR}/module_template/Patch/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())

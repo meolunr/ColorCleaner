@@ -1,4 +1,4 @@
-id=ccappupdate
+id=ccpatch
 name=CC系统更新
 version=$var_version
 versionCode=$var_version_code

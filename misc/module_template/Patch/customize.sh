@@ -17,9 +17,9 @@ appendToScript() {
 }
 
 removeDataApp() {
-	result=$(pm path "$1")
+	local result=$(pm path "$1")
 	if [ -n "$result" ]; then
-		path=$(dirname $(dirname ${result:8}))
+		local path=$(dirname $(dirname ${result:8}))
 		if [ ${path:0:10} = "/data/app/" ]; then
 			ui_print "- Update app: $1, remove on next boot: $path"
 			appendToScript "rm -rf $path"
