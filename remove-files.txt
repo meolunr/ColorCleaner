@@ -24,7 +24,6 @@ system_ext/app/LFEHer
 system_ext/app/LogKit
 system_ext/app/OTrace
 system_ext/app/Olc
-system_ext/app/OplusAtlasService
 system_ext/app/OplusQualityProtect
 system_ext/app/OwkService
 system_ext/app/PrintSpooler
