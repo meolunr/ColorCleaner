@@ -45,7 +45,7 @@ class NewApp(object):
         if not old_dir.startswith('/product/'):
             return old_dir
 
-        my_partitions = {x for x in config.unpack_partitions if x.startswith('my_')}
+        my_partitions = {x for x in config.UNPACK_PARTITIONS if x.startswith('my_')}
         for my_partition in my_partitions:
             my_path = f'/{my_partition}{old_dir[8:]}'
             if adb.exists(my_path):

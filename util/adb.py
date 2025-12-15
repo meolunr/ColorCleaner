@@ -41,8 +41,8 @@ def install_test_module():
         execute('ksud module install /sdcard/CCTestModule.zip')
         execute('rm /sdcard/CCTestModule.zip')
 
-        for partition in config.unpack_partitions:
-            if partition == 'system':
+        for partition in config.UNPACK_PARTITIONS:
+            if partition in ('boot', 'system'):
                 continue
             partition_dir = f'{_OVERLAYFS_MODULE_DIR}/{partition}'
             execute(f'mkdir {partition_dir}')

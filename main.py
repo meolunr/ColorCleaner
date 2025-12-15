@@ -36,7 +36,7 @@ def unpack_img():
     magiskboot = f'{LIB_DIR}/magiskboot.exe'
     partition_filesystem = {}
 
-    for partition in config.unpack_partitions:
+    for partition in config.UNPACK_PARTITIONS:
         img = f'{partition}.img'
         file = f'images/{img}'
         filesystem = imgfile.filesystem(file)
@@ -118,7 +118,7 @@ def repack_img():
     with open(PARTITION_FILESYSTEM_JSON, 'r', encoding='utf-8') as f:
         partition_filesystem: dict = json.load(f)
 
-    for partition in config.unpack_partitions:
+    for partition in config.UNPACK_PARTITIONS:
         log(f'打包分区文件: {partition}')
         file = f'images/{partition}.img'
         filesystem = imgfile.FileSystem[partition_filesystem[partition]]
@@ -243,7 +243,7 @@ def make_module():
     customize.run_on_module()
 
     # Let the module manager app handle partition path automatically
-    for partition in config.unpack_partitions:
+    for partition in config.UNPACK_PARTITIONS:
         if partition != 'system' and os.path.isdir(partition):
             shutil.move(partition, f'system/{partition}')
 
@@ -293,8 +293,6 @@ def main():
     start = datetime.now()
     match args.command:
         case 'rom':
-            if args.kernel:
-                config.unpack_partitions.add('boot')
             make_rom(args)
         case 'module':
             make_module()
