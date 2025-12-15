@@ -71,12 +71,35 @@ def read_rom_information():
             elif line.startswith('ro.build.version.release'):
                 config.sdk = getvalue(line)
 
+    pattern = re.compile(r'.*?(\d+\.\d+).+?-(android\d+)')
+    with open('boot/kernel', 'rb') as f:
+        for item in f.read().split(b'\x00'):
+            try:
+                item = item.decode('utf-8')
+            except UnicodeDecodeError:
+                continue
+            if all(c.isascii() and (c.isprintable() and c != '\t' and c != '\n' or c == ' ') for c in item):
+                match = pattern.search(item)
+                if match:
+                    config.kmi = f'{match.group(2)}-{match.group(1)}'
+                    break
+
 
 def custom_kernel(file: str):
     if not file or not os.path.isfile(file):
         return
     log('自定义内核镜像')
     shutil.copy(file, 'boot/kernel')
+
+
+def install_lkm(no_lkm: bool):
+    if no_lkm:
+        return
+    log('安装 KernelSU LKM')
+
+    ksud = f'{LIB_DIR}/ksud.exe'
+    magiskboot = f'{LIB_DIR}/magiskboot.exe'
+    subprocess.run([ksud, 'boot-patch', '--magiskboot', magiskboot, '-b', 'images/init_boot.img', '--kmi', config.kmi, '--out-name', 'images/init_boot.img'], check=True)
 
 
 def patch_vbmeta():
@@ -260,6 +283,7 @@ def make_rom(args: argparse.Namespace):
     unpack_img()
     read_rom_information()
     custom_kernel(args.kernel)
+    install_lkm(args.no_lkm)
     patch_vbmeta()
     disable_avb_and_dm_verity()
     move_deletable_apk()
@@ -283,6 +307,7 @@ def main():
     rom_parser = subparsers.add_parser('rom', help='制作全量包', parents=[out_parser], add_help=False)
     rom_parser.add_argument('zip', help='需要处理的 ROM 包')
     rom_parser.add_argument('-k', '--kernel', help='自定义内核镜像')
+    rom_parser.add_argument('--no-lkm', action='store_true', help='不安装 KernelSU LKM')
 
     subparsers.add_parser('module', help='制作系统更新模块', parents=[out_parser], add_help=False)
     args = parser.parse_args()

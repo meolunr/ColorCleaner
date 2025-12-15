@@ -21,3 +21,4 @@ MODIFY_DELETABLE_APK = (
 device: str
 version: str
 sdk: int
+kmi: str
