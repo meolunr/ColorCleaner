@@ -379,14 +379,69 @@ def patch_tele_service():
 
     const-string (?:[v|p]\d+), "true"
 
-    invoke-static {(?:(?:[v|p]\d+), ){3}(?:[v|p]\d+)}, Lcom/android/phone/oplus/share/j;->.+?\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
+    invoke-static {(?:(?:[v|p]\d+), ){3}(?:[v|p]\d+)}, Lcom/android/phone/oplus/share/.+?;->.+?\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
 
     move-result ([v|p]\d+)
 '''
     repl = '''
-const/4 \\g<1>, 0x0'''
+const/4 \\g<1>, 0x0
+'''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
+
+    apk.build()
+
+
+@modified('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
+def remove_traffic_monitor_ads():
+    log('去除流量管理内流量卡广告')
+    apk = ApkFile('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
+    apk.decode()
+
+    smali = apk.find_smali('"datausage_TrafficCardController"', '"updateHighDataSimCardConfiguration"').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.is_final = True
+    specifier.parameters = 'Landroid/content/Context;I'
+    specifier.return_type = 'V'
+    specifier.keywords.add('"updateHighDataSimCardConfiguration"')
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    const-string (?:[v|p]\d+), "basewallet_traffic_card_support"
+
+    const-string (?:[v|p]\d+), "true"
+
+    invoke-static {p1(?:, [v|p]\d+){3}}, L.+?;->.+?\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
+
+    move-result ([v|p]\d+)
+'''
+    repl = '''
+    const/4 \\g<1>, 0x0
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
+    smali = apk.find_smali('"datausage_SysFeatureUtils"').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.is_final = True
+    specifier.parameters = ''
+    specifier.return_type = 'Ljava/lang/String;'
+    for keyword in ('"com.oplus.trafficmonitor.wallet_uri"', '"com.oplus.trafficmonitor.wallet_H5_uri"'):
+        specifier.keywords.clear()
+        specifier.keywords.add(keyword)
+
+        old_body = smali.find_method(specifier)
+        new_body = old_body.splitlines()[0] + '''
+    .locals 1
+
+    const/4 v0, 0x0
+    
+    return-object v0
+.end method\
+'''
+        smali.method_replace(old_body, new_body)
 
     apk.build()
 
@@ -918,6 +973,7 @@ def run_on_rom():
     disable_sensitive_word_check()
     show_netmask_and_gateway()
     patch_tele_service()
+    remove_traffic_monitor_ads()
     show_icon_for_silent_notification()
     remove_system_notification_ads()
     remove_calendar_ads()
