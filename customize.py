@@ -340,6 +340,30 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
     apk.build()
 
 
+@modified('system_ext/priv-app/TeleService/TeleService.apk')
+def patch_tele_service():
+    apk = ApkFile('system_ext/priv-app/TeleService/TeleService.apk')
+    apk.decode()
+
+    log('显示首选网络类型')
+    smali = apk.find_smali('"SIMS_OplusSimInfoActivity"', '"changeNetworkModeConfig type:"').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.parameters = 'ILjava/lang/String;Z'
+    specifier.return_type = 'V'
+    specifier.keywords.add('"changeNetworkModeConfig type:"')
+
+    old_body = smali.find_method(specifier)
+    lines = old_body.splitlines()
+    lines.insert(1, '    const/4 v0, 0x1')
+    lines.insert(2, '    if-ne p1, v0, :jump')
+    lines.insert(3, '    const/4 p3, 0x1')
+    lines.insert(4, '    :jump')
+    smali.method_replace(old_body, '\n'.join(lines))
+
+    apk.build()
+
+
 @modified('system_ext/app/NotificationCenter/NotificationCenter.apk')
 def show_icon_for_silent_notification():
     log('允许显示静默通知的图标')
@@ -914,6 +938,7 @@ def run_on_rom():
     show_touchscreen_panel_info()
     disable_sensitive_word_check()
     show_netmask_and_gateway()
+    patch_tele_service()
     show_icon_for_silent_notification()
     remove_system_notification_ads()
     remove_calendar_ads()
