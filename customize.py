@@ -75,7 +75,7 @@ def replace_installer():
 
 
 def remove_activity_start_dialog():
-    log('移除关联启动对话框')
+    log('禁用关联启动对话框')
     xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
     root = xml.get_root()
     element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
@@ -97,14 +97,14 @@ def patch_oplus_services():
     apk = ApkFile('system/system/framework/oplus-services.jar')
     apk.decode()
 
-    log('移除 ADB 安装确认')
+    log('禁用 ADB 安装确认')
     smali = apk.open_smali('com/android/server/pm/OplusPackageInstallInterceptManager.smali')
     specifier = MethodSpecifier()
     specifier.name = 'allowInterceptAdbInstallInInstallStage'
     specifier.parameters = 'ILandroid/content/pm/PackageInstaller$SessionParams;Ljava/io/File;Ljava/lang/String;Landroid/content/pm/IPackageInstallObserver2;'
     smali.method_return_boolean(specifier, False)
 
-    log('移除已激活 VPN 通知')
+    log('去除已激活 VPN 通知')
     smali = apk.open_smali('com/android/server/connectivity/VpnExtImpl.smali')
     specifier = MethodSpecifier()
     specifier.name = 'showNotification'
@@ -161,26 +161,26 @@ def patch_system_ui():
 '''
     smali.method_replace(old_body, new_body)
 
-    log('移除开发者选项通知')
+    log('去除开发者选项通知')
     smali = apk.open_smali('com/oplus/systemui/statusbar/controller/SystemPromptController.smali')
     specifier = MethodSpecifier()
     specifier.name = 'updateDeveloperMode'
     smali.method_nop(specifier)
 
-    log('移除 USB 选择弹窗')
+    log('禁用 USB 选择弹窗')
     smali = apk.open_smali('com/oplus/systemui/usb/UsbService.smali')
     specifier = MethodSpecifier()
     specifier.name = 'performUsbDialogAction'
 
     old_body = smali.find_method(specifier)
     lines = old_body.splitlines()
-    lines.insert(3, '    const/16 v0, 0x3ea')
-    lines.insert(4, '    if-eq p1, v0, :jump_return')
-    lines.insert(5, '    const/16 v0, 0x3eb')
-    lines.insert(6, '    if-ne p1, v0, :jump_normal')
-    lines.insert(7, '    :jump_return')
-    lines.insert(8, '    return-void')
-    lines.insert(9, '    :jump_normal')
+    lines.insert(3, 'const/16 v0, 0x3ea')
+    lines.insert(4, 'if-eq p1, v0, :jump_return')
+    lines.insert(5, 'const/16 v0, 0x3eb')
+    lines.insert(6, 'if-ne p1, v0, :jump_normal')
+    lines.insert(7, ':jump_return')
+    lines.insert(8, 'return-void')
+    lines.insert(9, ':jump_normal')
     smali.method_replace(old_body, '\n'.join(lines))
 
     apk.build()
@@ -213,7 +213,7 @@ def disable_launcher_clock_red_one():
     specifier.is_static = True
     specifier.parameters = ''
     specifier.return_type = 'Z'
-    specifier.keywords.add("not found class:com.oplus.widget.OplusTextClock")
+    specifier.keywords.add('"not found class:com.oplus.widget.OplusTextClock"')
     smali.method_return_boolean(specifier, False)
 
     apk.build()
@@ -355,11 +355,38 @@ def patch_tele_service():
 
     old_body = smali.find_method(specifier)
     lines = old_body.splitlines()
-    lines.insert(1, '    const/4 v0, 0x1')
-    lines.insert(2, '    if-ne p1, v0, :jump')
-    lines.insert(3, '    const/4 p3, 0x1')
-    lines.insert(4, '    :jump')
+    lines.insert(2, 'const/4 v0, 0x1')
+    lines.insert(3, 'if-ne p1, v0, :jump')
+    lines.insert(4, 'const/4 p3, 0x1')
+    lines.insert(5, ':jump')
     smali.method_replace(old_body, '\n'.join(lines))
+
+    log('去除移动网络内流量卡广告')
+    smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"').pop()
+    specifier = MethodSpecifier()
+    specifier.name = 'run'
+    specifier.parameters = ''
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    sget-object (?:[v|p]\d+), Lcom/android/phone/ConfigurationConstants;->INSTANCE:Lcom/android/phone/ConfigurationConstants;
+
+    invoke-virtual {(?:[v|p]\d+)}, Lcom/android/phone/ConfigurationConstants;->getTRAFFIC_CARD_PACKAGE_NAME\(\)Ljava/lang/String;
+
+    move-result-object (?:[v|p]\d+)
+
+    const-string (?:[v|p]\d+), "basewallet_traffic_card_support"
+
+    const-string (?:[v|p]\d+), "true"
+
+    invoke-static {(?:(?:[v|p]\d+), ){3}(?:[v|p]\d+)}, Lcom/android/phone/oplus/share/j;->.+?\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
+
+    move-result ([v|p]\d+)
+'''
+    repl = '''
+const/4 \\g<1>, 0x0'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
 
     apk.build()
 
@@ -588,8 +615,8 @@ def patch_theme_manager():
 
     old_body = smali.find_method(specifier)
     lines = old_body.splitlines()
-    lines.insert(12, '    const/4 p1, 0x0')
-    lines.insert(13, '    const/4 p2, 0x0')
+    lines.insert(12, 'const/4 p1, 0x0')
+    lines.insert(13, 'const/4 p2, 0x0')
     smali.method_replace(old_body, '\n'.join(lines))
 
     smali = apk.find_smali('"DrmService.java"', '"theme"', '"check rights isLegal: "').pop()
@@ -654,15 +681,6 @@ def remove_mms_ads():
 def patch_security_center():
     apk = ApkFile('product/priv-app/MIUISecurityCenter/MIUISecurityCenter.apk')
     apk.decode()
-
-    log('去除应用信息举报按钮')
-    smali = apk.open_smali('com/miui/appmanager/fragment/ApplicationsDetailsFragment.smali')
-    specifier = MethodSpecifier()
-    specifier.parameters = 'Landroid/content/Context;Landroid/net/Uri;'
-    specifier.return_type = 'Z'
-    specifier.keywords.add('"android.intent.action.VIEW"')
-    specifier.keywords.add('"com.xiaomi.market"')
-    smali.method_return_boolean(specifier, False)
 
     log('显示电池健康度')
     smali = apk.find_smali('.class Lcom/miui/powercenter/nightcharge/ChargeProtectFragment$', '.super Landroid/os/Handler;').pop()
@@ -804,45 +822,6 @@ def patch_security_center():
     specifier.name = 'onClick'
     specifier.parameters = 'Landroid/view/View;'
     smali.method_nop(specifier)
-
-    log('显示详细耗电数据')
-    # Show battery usage data for all apps
-    smali = apk.find_smali('"PowerRankHelperHolder"', '"getBatteryUsageStats"').pop()
-    specifier = MethodSpecifier()
-    specifier.access = MethodSpecifier.Access.PUBLIC
-    specifier.is_static = True
-    specifier.parameters = ''
-    specifier.return_type = 'Z'
-    specifier.keywords.add('sget-boolean')
-    specifier.keywords.add('Lcom/miui/powercenter/legacypowerrank/')
-    smali.method_return_boolean(specifier, False)
-
-    # Show battery usage data for touchscreen
-    specifier.access = MethodSpecifier.Access.PRIVATE
-    smali.method_return_boolean(specifier, False)
-
-    # Hide unknown battery usage data
-    specifier.keywords.clear()
-    specifier.keywords.add('"ishtar"')
-    specifier.keywords.add('"nuwa"')
-    specifier.keywords.add('"fuxi"')
-    smali.method_return_boolean(specifier, True)
-
-    log('禁用耗电项优化建议')
-    smali = apk.find_smali('"key_show_battery_power_save_suggest"').pop()
-    specifier = MethodSpecifier()
-    specifier.is_static = True
-    specifier.return_type = 'Z'
-    specifier.keywords.add('"key_show_battery_power_save_suggest"')
-    smali.method_return_boolean(specifier, False)
-
-    log('禁用 Root 权限检查')
-    smali = apk.find_smali('"key_check_item_root"').pop()
-    specifier = MethodSpecifier()
-    specifier.is_static = True
-    specifier.return_type = 'Z'
-    specifier.keywords.add('"key_check_item_root"')
-    smali.method_return_boolean(specifier, False)
 
     log('去除危险操作倒计时确认')
     smali = apk.open_smali('com/miui/permcenter/privacymanager/model/InterceptBaseActivity.smali')
