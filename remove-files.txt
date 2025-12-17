@@ -50,10 +50,14 @@ my_product/priv-app/ConfigUpdater
 my_product/priv-app/GmsCore
 my_product/priv-app/GoogleOneTimeInitializer
 my_product/priv-app/GooglePlayServicesUpdater
+my_product/priv-app/NewCallSdk
+my_product/priv-app/OVoiceManagerService
 my_product/priv-app/RemoteControl
+my_product/overlay/NewCallOverlay
 my_product/non_overlay/app/GooglePrintRecommendationService
 my_product/non_overlay/priv-app/GoogleServicesFramework
 my_stock/app/ADS
+my_stock/app/AIMemory
 my_stock/app/AIWidgets
 my_stock/app/AIWriter
 my_stock/app/ARCore
@@ -72,6 +76,7 @@ my_stock/app/OWork
 my_stock/app/OcrScanner
 my_stock/app/OplusOperationManual
 my_stock/app/OplusSecurityKeyboard
+my_stock/app/OVoiceManagerSkillService
 my_stock/app/RegService
 my_stock/app/SceneMode
 my_stock/app/SecurePay
@@ -86,6 +91,7 @@ my_stock/priv-app/Cota
 my_stock/priv-app/DCS
 my_stock/priv-app/DeviceIntegrationService
 my_stock/priv-app/GlobalSearch
+my_stock/priv-app/HeyTapSpeechAssist
 my_stock/priv-app/KeKeAppDetail
 my_stock/priv-app/LinktoWindows
 my_stock/priv-app/MDSService
