@@ -167,6 +167,13 @@ def patch_system_ui():
     specifier.name = 'updateDeveloperMode'
     smali.method_nop(specifier)
 
+    log('去除免打扰模式通知')
+    smali = apk.open_smali('com/oplus/systemui/statusbar/notification/helper/DndAlertHelper.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'operateNotification'
+    specifier.parameters = 'IJZ'
+    smali.method_nop(specifier)
+
     log('禁用 USB 选择弹窗')
     smali = apk.open_smali('com/oplus/systemui/usb/UsbService.smali')
     specifier = MethodSpecifier()
