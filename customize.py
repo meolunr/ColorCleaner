@@ -248,24 +248,9 @@ def show_touchscreen_panel_info():
     apk.build()
 
 
-@modified('system_ext/priv-app/Settings/Settings.apk')
-def disable_sensitive_word_check():
-    log('禁用设备名称敏感词检查')
-    apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
-    apk.decode()
-
-    smali = apk.open_smali('com/oplus/settings/feature/deviceinfo/aboutphone/PhoneNameVerifyUtil.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'activeNeedServerVerify'
-    specifier.parameters = 'Ljava/lang/String;'
-    smali.method_return_boolean(specifier, False)
-
-    apk.build()
-
-
 @modified('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
 def show_netmask_and_gateway():
-    log('显示设置中的子网掩码和网关')
+    log('显示 WLAN 设置中的子网掩码和网关')
     apk = ApkFile('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
     apk.decode()
 
@@ -347,6 +332,44 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
     apk.build()
 
 
+@modified('system_ext/priv-app/Settings/Settings.apk')
+def patch_settings():
+    apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
+    apk.decode()
+
+    log('禁用设备名称敏感词检查')
+    smali = apk.open_smali('com/oplus/settings/feature/deviceinfo/aboutphone/PhoneNameVerifyUtil.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'activeNeedServerVerify'
+    specifier.parameters = 'Ljava/lang/String;'
+    smali.method_return_boolean(specifier, False)
+
+    log('显示应用详情中的包名和版本代码')
+    smali = apk.open_smali('com/oplus/settings/feature/appmanager/AppInfoFeature.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'setAppLabelAndIcon'
+    specifier.parameters = 'Lcom/android/settings/applications/appinfo/AppButtonsPreferenceController;'
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    invoke-virtual {p0, ([v|p]\d+)}, Lcom/oplus/settings/feature/appmanager/AppInfoFeature;->getVersionName\(Landroid/content/pm/PackageInfo;\)Ljava/lang/CharSequence;
+(?:.|\n)*?
+    invoke-virtual {p1, (?:[v|p]\d+), (?:[v|p]\d+)}, Landroidx/fragment/app/Fragment;->getString\(I\[Ljava/lang/Object;\)Ljava/lang/String;
+
+    move-result-object (?:[v|p]\d+)
+
+    invoke-virtual {([v|p]\d+), (?:[v|p]\d+)}, Landroid/widget/TextView;->setText\(Ljava/lang/CharSequence;\)V
+'''
+    repl = r'''
+    invoke-static {\g<2>, \g<1>}, Lcom/oplus/settings/feature/appmanager/CcInjector;->setPackageAndVersion(Landroid/widget/TextView;Landroid/content/pm/PackageInfo;)V
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+    smali.add_affiliated_smali(f'{MISC_DIR}/smali/ShowPackageAndVersion.smali', 'CcInjector.smali')
+
+    apk.build()
+
+
 @modified('system_ext/priv-app/TeleService/TeleService.apk')
 def patch_tele_service():
     apk = ApkFile('system_ext/priv-app/TeleService/TeleService.apk')
@@ -368,7 +391,7 @@ def patch_tele_service():
     lines.insert(5, ':jump')
     smali.method_replace(old_body, '\n'.join(lines))
 
-    log('去除移动网络内流量卡广告')
+    log('去除移动网络中的流量卡广告')
     smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"').pop()
     specifier = MethodSpecifier()
     specifier.name = 'run'
@@ -401,7 +424,7 @@ const/4 \\g<1>, 0x0
 
 @modified('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
 def remove_traffic_monitor_ads():
-    log('去除流量管理内流量卡广告')
+    log('去除流量管理中的流量卡广告')
     apk = ApkFile('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
     apk.decode()
 
@@ -977,8 +1000,8 @@ def run_on_rom():
     disable_lock_screen_red_one()
     disable_launcher_clock_red_one()
     show_touchscreen_panel_info()
-    disable_sensitive_word_check()
     show_netmask_and_gateway()
+    patch_settings()
     patch_tele_service()
     remove_traffic_monitor_ads()
     show_icon_for_silent_notification()
