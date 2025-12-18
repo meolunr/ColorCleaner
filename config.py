@@ -7,8 +7,10 @@ MODIFY_PACKAGE = (
     'com.oplus.keyguard.clock.base',
     'com.coloros.alarmclock',
     'com.oplus.engineermode',
-    'com.android.settings',
     'com.oplus.wirelesssettings',
+    'com.android.settings',
+    'com.android.phone',
+    'com.oplus.trafficmonitor',
     'com.oplus.notificationmanager',
     'com.heytap.mcs',
     'com.coloros.calendar'
