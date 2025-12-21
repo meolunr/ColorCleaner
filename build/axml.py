@@ -96,7 +96,7 @@ class ManifestXml:
                 chunk = StartTagChunk(f)
                 name = self._get_string(chunk.name)
                 # Only parse these elements because we need their attributes
-                if name not in ('manifest', 'uses-permission', 'application'):
+                if name not in ('manifest', 'application'):
                     # Skip attributes of start tag
                     f.seek(chunk.attribute_count * StartTagChunk.Attribute.SIZE, os.SEEK_CUR)
                     continue
@@ -108,8 +108,6 @@ class ManifestXml:
         match name:
             case 'manifest':
                 pass
-            case 'uses-permission':
-                self.attributes.setdefault(name, set())
             case _:
                 self.attributes[name] = {}
 
@@ -129,9 +127,6 @@ class ManifestXml:
             match name:
                 case 'manifest':
                     self.attributes[key] = attribute.data
-                case 'uses-permission':
-                    if key == 'android:name':
-                        self.attributes[name].add(attribute.data)
                 case _:
                     self.attributes[name][key] = attribute.data
 

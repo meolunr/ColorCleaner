@@ -44,7 +44,7 @@ class ApkFile:
         return None
 
     def find_smali(self, *keywords: str):
-        results = set()
+        results = set[SmaliFile]()
         # See: https://docs.python.org/3/using/windows.html#removing-the-max-path-limitation
         for file in glob(f'{self.output}/smali*/**/*.smali', recursive=True):
             keyword_set = set(keywords)
@@ -72,11 +72,6 @@ class ApkFile:
         if not self._manifest_attributes:
             self._parse_manifest()
         return self._manifest_attributes['application'].get('android:extractNativeLibs', None)
-
-    def uses_permission(self):
-        if not self._manifest_attributes:
-            self._parse_manifest()
-        return self._manifest_attributes['uses-permission']
 
     def _parse_manifest(self):
         with ZipFile(self.file, 'r') as zip_file:
