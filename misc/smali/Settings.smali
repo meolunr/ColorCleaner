@@ -1,4 +1,4 @@
-.class public Lcom/oplus/settings/feature/appmanager/CcInjector;
+.class public Lcom/meolunr/colorcleaner/CcInjector;
 .super Ljava/lang/Object;
 
 

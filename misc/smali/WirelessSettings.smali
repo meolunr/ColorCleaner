@@ -1,4 +1,4 @@
-.class public Lcom/oplus/wirelesssettings/wifi/detail2/CcInjector;
+.class public Lcom/meolunr/colorcleaner/CcInjector;
 .super Ljava/lang/Object;
 
 

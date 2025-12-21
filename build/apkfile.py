@@ -1,6 +1,7 @@
 import os
 import shutil
 from glob import glob
+from pathlib import Path
 from zipfile import ZipFile
 
 from util import apkeditor
@@ -52,6 +53,12 @@ class ApkFile:
             if len(keyword_set) == 0:
                 results.add(SmaliFile(file))
         return results
+
+    def add_smali(self, src_path: str, full_smali_path: str):
+        smali_dir = sorted(os.listdir(f'{self.output}/smali'), reverse=True)[0]
+        dst_path = Path(f'{self.output}/smali/{smali_dir}/{full_smali_path}')
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src_path, dst_path)
 
     def open_xml(self, file: str):
         return XmlFile(f'{self.output}/resources/package_1/res/{file}')

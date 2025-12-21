@@ -1,4 +1,4 @@
-package com.oplus.wirelesssettings.wifi.detail2;
+package com.meolunr.colorcleaner;
 
 import android.content.Context;
 import android.net.ConnectivityManager;

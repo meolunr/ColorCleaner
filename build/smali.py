@@ -1,6 +1,4 @@
-import os
 import re
-import shutil
 from enum import Enum
 
 
@@ -109,9 +107,18 @@ class SmaliFile:
 '''
         self.method_replace(old_body, new_body)
 
-    def add_affiliated_smali(self, file: str, name: str):
-        folder = os.path.dirname(self.file)
-        shutil.copy(file, f'{folder}/{name}')
+    def method_insert_before(self, specifier: MethodSpecifier, insert: str):
+        old_body = self.find_method(specifier)
+
+        keyword_index = 0
+        for item in ('.locals', '.end annotation', '.end param'):
+            pos = old_body.find(item, keyword_index)
+            if pos > keyword_index:
+                keyword_index = pos
+        index = old_body.find('\n', keyword_index) + 1
+
+        new_body = old_body[:index] + f'\n{insert}' + old_body[index:]
+        self.method_replace(old_body, new_body)
 
     def get_type_signature(self):
         normpath = self.file.replace('\\', '/')

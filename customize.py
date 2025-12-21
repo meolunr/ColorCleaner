@@ -178,17 +178,21 @@ def patch_system_ui():
     smali = apk.open_smali('com/oplus/systemui/usb/UsbService.smali')
     specifier = MethodSpecifier()
     specifier.name = 'performUsbDialogAction'
-
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    lines.insert(3, 'const/16 v0, 0x3ea')
-    lines.insert(4, 'if-eq p1, v0, :jump_return')
-    lines.insert(5, 'const/16 v0, 0x3eb')
-    lines.insert(6, 'if-ne p1, v0, :jump_normal')
-    lines.insert(7, ':jump_return')
-    lines.insert(8, 'return-void')
-    lines.insert(9, ':jump_normal')
-    smali.method_replace(old_body, '\n'.join(lines))
+    insert = '''\
+    const/16 v0, 0x3ea
+    
+    if-eq p1, v0, :jump_return
+    
+    const/16 v0, 0x3eb
+    
+    if-ne p1, v0, :jump_normal
+    
+    :jump_return
+    return-void
+    
+    :jump_normal
+'''
+    smali.method_insert_before(specifier, insert)
 
     apk.build()
 
@@ -253,10 +257,11 @@ def show_netmask_and_gateway():
     log('显示 WLAN 设置中的子网掩码和网关')
     apk = ApkFile('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
     apk.decode()
+    apk.add_smali(f'{MISC_DIR}/smali/WirelessSettings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
     smali = apk.open_smali('com/oplus/wirelesssettings/wifi/detail2/WifiAddressController.smali')
     old_body = smali.find_constructor('Landroid/content/Context;Lcom/android/wifitrackerlib/WifiEntry;')
-    context_field = re.search(r'iput-object p1, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(.+?):Landroid/content/Context;', old_body).group(1)
+    context_field = re.search(r'iput-object p1, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+?):Landroid/content/Context;', old_body).group(1)
 
     specifier = MethodSpecifier()
     specifier.name = 'displayPreference'
@@ -270,7 +275,7 @@ def show_netmask_and_gateway():
 
     move-result-object (?:[v|p]\d+)
 
-    iput-object (?:[v|p]\d+), p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(.+?):Landroidx/preference/Preference;
+    iput-object (?:[v|p]\d+), p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+?):Landroidx/preference/Preference;
 '''
     ip_preference_field = re.search(f'{pattern1.format(key='current_ip_address')}{pattern2}', old_body).group(1)
     ipv4_preference_field = re.search(f'{pattern1.format(key='current_ipv4_address')}{pattern2}', old_body).group(1)
@@ -281,7 +286,7 @@ def show_netmask_and_gateway():
     specifier.return_type = 'Z'
     specifier.keywords.add('"WifiAddressController"')
     specifier.keywords.add('"updateIpInfo:')
-    update_ip_info_method = re.search(r'\.method public final (.+?)\(\)Z', smali.find_method(specifier)).group(1)
+    update_ip_info_method = re.search(r'\.method public final (\S+?)\(\)Z', smali.find_method(specifier)).group(1)
 
     specifier = MethodSpecifier()
     specifier.parameters = ''
@@ -292,7 +297,7 @@ def show_netmask_and_gateway():
     pattern = f'''\
     .locals 1
 ((?:.|\\n)*?
-    invoke-virtual {{p0}}, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->.+?\\(\\)Z
+    invoke-virtual {{p0}}, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->\\S+?\\(\\)Z
 )
     move-result p0
 ((?:.|\\n)*?
@@ -319,7 +324,7 @@ def show_netmask_and_gateway():
 
     iget-object p0, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->{ipv6_preference_field}:Landroidx/preference/Preference;
 
-    invoke-static {{v1, v2, v3, p0}}, Lcom/oplus/wirelesssettings/wifi/detail2/CcInjector;->\
+    invoke-static {{v1, v2, v3, p0}}, Lcom/meolunr/colorcleaner/CcInjector;->\
 showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;Landroidx/preference/Preference;Landroidx/preference/Preference;)V
 
     :jump\\g<3>
@@ -327,7 +332,6 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
 '''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
-    smali.add_affiliated_smali(f'{MISC_DIR}/smali/ShowNetmaskAndGateway.smali', 'CcInjector.smali')
 
     apk.build()
 
@@ -336,6 +340,7 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
 def patch_settings():
     apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
     apk.decode()
+    apk.add_smali(f'{MISC_DIR}/smali/Settings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
     log('禁用设备名称敏感词检查')
     smali = apk.open_smali('com/oplus/settings/feature/deviceinfo/aboutphone/PhoneNameVerifyUtil.smali')
@@ -361,11 +366,10 @@ def patch_settings():
     invoke-virtual {([v|p]\d+), (?:[v|p]\d+)}, Landroid/widget/TextView;->setText\(Ljava/lang/CharSequence;\)V
 '''
     repl = r'''
-    invoke-static {\g<2>, \g<1>}, Lcom/oplus/settings/feature/appmanager/CcInjector;->setPackageAndVersion(Landroid/widget/TextView;Landroid/content/pm/PackageInfo;)V
+    invoke-static {\g<2>, \g<1>}, Lcom/meolunr/colorcleaner/CcInjector;->setPackageAndVersion(Landroid/widget/TextView;Landroid/content/pm/PackageInfo;)V
 '''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
-    smali.add_affiliated_smali(f'{MISC_DIR}/smali/ShowPackageAndVersion.smali', 'CcInjector.smali')
 
     apk.build()
 
@@ -461,17 +465,7 @@ def remove_traffic_monitor_ads():
     for keyword in ('"com.oplus.trafficmonitor.wallet_uri"', '"com.oplus.trafficmonitor.wallet_H5_uri"'):
         specifier.keywords.clear()
         specifier.keywords.add(keyword)
-
-        old_body = smali.find_method(specifier)
-        new_body = old_body.splitlines()[0] + '''
-    .locals 1
-
-    const/4 v0, 0x0
-    
-    return-object v0
-.end method\
-'''
-        smali.method_replace(old_body, new_body)
+        smali.method_return_null(specifier)
 
     apk.build()
 

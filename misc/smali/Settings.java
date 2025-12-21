@@ -1,4 +1,4 @@
-package com.oplus.settings.feature.appmanager;
+package com.meolunr.colorcleaner;
 
 import android.content.pm.PackageInfo;
 import android.text.Spannable;
