@@ -31,16 +31,12 @@ class ApkFile:
         apkeditor.refactor(old_file, self.file)
         os.remove(old_file)
 
-    def open_smali(self, file: str, *, auto_parse=True):
+    def open_smali(self, file: str):
         dirs = set(map(lambda x: f'smali/{x}', os.listdir(f'{self.output}/smali')))
         for dir_name in dirs:
             assumed_path = f'{self.output}/{dir_name}/{file}'
             if os.path.exists(assumed_path):
-                smali = SmaliFile(assumed_path, self)
-                if auto_parse:
-                    smali.parse_all_methods()
-                    smali.parse_all_constructor()
-                return smali
+                return SmaliFile(assumed_path)
         return None
 
     def find_smali(self, *keywords: str):
@@ -54,10 +50,7 @@ class ApkFile:
                         if keyword in line:
                             keyword_set.discard(keyword)
             if len(keyword_set) == 0:
-                smali = SmaliFile(file, self)
-                smali.parse_all_methods()
-                smali.parse_all_constructor()
-                results.add(smali)
+                results.add(SmaliFile(file))
         return results
 
     def open_xml(self, file: str):
