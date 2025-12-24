@@ -128,7 +128,6 @@ def patch_system_ui():
     specifier.name = 'setTextWithRedOneStyle'
     specifier.parameters = 'Landroid/widget/TextView;Ljava/lang/CharSequence;'
     specifier.return_type = 'Z'
-    old_body = smali.find_method(specifier)
     new_body = '''\
 .method public setTextWithRedOneStyle(Landroid/widget/TextView;Ljava/lang/CharSequence;)Z
     .locals 0
@@ -140,14 +139,13 @@ def patch_system_ui():
     return p0
 .end method
 '''
-    smali.method_replace(old_body, new_body)
+    smali.method_replace(specifier, new_body)
 
     smali = apk.open_smali('com/oplus/keyguard/utils/KeyguardUtils$Companion.smali')
     specifier = MethodSpecifier()
     specifier.name = 'getSpannedHourString'
     specifier.parameters = 'Landroid/content/Context;Ljava/lang/String;'
     specifier.return_type = 'Landroid/text/SpannableStringBuilder;'
-    old_body = smali.find_method(specifier)
     new_body = '''\
 .method public final getSpannedHourString(Landroid/content/Context;Ljava/lang/String;)Landroid/text/SpannableStringBuilder;
     .locals 0
@@ -159,7 +157,7 @@ def patch_system_ui():
     return p1
 .end method
 '''
-    smali.method_replace(old_body, new_body)
+    smali.method_replace(specifier, new_body)
 
     log('去除开发者选项通知')
     smali = apk.open_smali('com/oplus/systemui/statusbar/controller/SystemPromptController.smali')
@@ -226,6 +224,33 @@ def disable_launcher_clock_red_one():
     specifier.return_type = 'Z'
     specifier.keywords.add('"not found class:com.oplus.widget.OplusTextClock"')
     smali.method_return_boolean(specifier, False)
+
+    apk.build()
+
+
+@modified('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
+def patch_launcher():
+    apk = ApkFile('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
+    apk.decode()
+
+    log('允许最近任务显示内存信息')
+    smali = apk.open_smali('com/oplus/quickstep/memory/MemoryInfoManager.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'judgeWhetherAllowMemoDisplay'
+    new_body = '''\
+.method private judgeWhetherAllowMemoDisplay()V
+    .locals 1
+
+    const/4 v0, 0x1
+
+    iput-boolean v0, p0, Lcom/oplus/quickstep/memory/MemoryInfoManager;->mAllowMemoryInfoDisplay:Z
+    
+    invoke-direct {p0, v0}, Lcom/oplus/quickstep/memory/MemoryInfoManager;->saveAllowMemoryInfoDisplay(Z)Z
+
+    return-void
+.end method
+'''
+    smali.method_replace(specifier, new_body)
 
     apk.build()
 
@@ -386,14 +411,16 @@ def patch_tele_service():
     specifier.parameters = 'ILjava/lang/String;Z'
     specifier.return_type = 'V'
     specifier.keywords.add('"changeNetworkModeConfig type:"')
+    insert = '''\
+    const/4 v0, 0x1
 
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    lines.insert(2, 'const/4 v0, 0x1')
-    lines.insert(3, 'if-ne p1, v0, :jump')
-    lines.insert(4, 'const/4 p3, 0x1')
-    lines.insert(5, ':jump')
-    smali.method_replace(old_body, '\n'.join(lines))
+    if-ne p1, v0, :jump
+
+    const/4 p3, 0x1
+
+    :jump
+'''
+    smali.method_insert_before(specifier, insert)
 
     log('去除移动网络中的流量卡广告')
     smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"').pop()
@@ -525,8 +552,6 @@ def remove_calendar_ads():
     specifier = MethodSpecifier()
     specifier.name = 'getItemViewType'
     specifier.parameters = 'I'
-
-    old_body = smali.find_method(specifier)
     new_body = '''\
 .method public getItemViewType(I)I
     .locals 0
@@ -538,7 +563,7 @@ def remove_calendar_ads():
     return p0
 .end method
 '''
-    smali.method_replace(old_body, new_body)
+    smali.method_replace(specifier, new_body)
 
     smali = apk.open_smali('com/coloros/calendar/app/cloudconfig/CloudOperate.smali')
     specifier = MethodSpecifier()
@@ -991,6 +1016,7 @@ def run_on_rom():
     turn_off_flashlight_with_power_key()
     patch_oplus_services()
     patch_system_ui()
+    patch_launcher()
     disable_lock_screen_red_one()
     disable_launcher_clock_red_one()
     show_touchscreen_panel_info()
