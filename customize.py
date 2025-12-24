@@ -252,6 +252,13 @@ def patch_launcher():
 '''
     smali.method_replace(specifier, new_body)
 
+    log('禁用最近任务自动聚焦到下一个应用')
+    smali = apk.open_smali('com/android/common/util/AppFeatureUtils.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'isSupportAutoFocusToNextPageInOverviewState'
+    specifier.parameters = 'Z'
+    smali.method_return_boolean(specifier, False)
+
     apk.build()
 
 
