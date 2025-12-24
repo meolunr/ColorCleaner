@@ -259,6 +259,27 @@ def patch_launcher():
     specifier.parameters = 'Z'
     smali.method_return_boolean(specifier, False)
 
+    log('桌面主页设置为第二页')
+    smali = apk.open_smali('com/android/launcher3/Workspace.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'initWorkspace'
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    invoke-static {}, Lcom/android/launcher/mode/LauncherModeManager;->getInstance\(\)Lcom/android/launcher/mode/LauncherModeManager;
+(?:.|\n)*?
+    move-result (?:[v|p]\d+)
+
+    (sput ([v|p]\d+), Lcom/android/launcher3/Workspace;->DEFAULT_PAGE:I)
+'''
+    repl = r'''
+    const/4 \g<2>, 0x1
+    
+    \g<1>
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
     apk.build()
 
 
