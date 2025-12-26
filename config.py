@@ -4,6 +4,8 @@ SUPER_PARTITIONS = ('system', 'system_ext', 'system_dlkm', 'product', 'vendor', 
 UNPACK_PARTITIONS = ('boot', 'system', 'system_ext', 'product', 'vendor', 'my_manifest', 'my_product', 'my_stock')
 MODIFY_PACKAGE = (
     'com.android.systemui',
+    'com.android.launcher',
+    'com.heytap.themestore',
     'com.oplus.keyguard.clock.base',
     'com.coloros.alarmclock',
     'com.oplus.engineermode',
@@ -16,6 +18,7 @@ MODIFY_PACKAGE = (
     'com.coloros.calendar'
 )
 MODIFY_DELETABLE_APK = (
+    'my_stock/del-app/KeKeThemeSpace/KeKeThemeSpace.apk'
     'my_stock/del-app/Clock/Clock.apk',
     'my_stock/del-app/Calendar/Calendar.apk'
 )

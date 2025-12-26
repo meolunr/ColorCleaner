@@ -195,39 +195,6 @@ def patch_system_ui():
     apk.build()
 
 
-@modified('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
-def disable_lock_screen_red_one():
-    log('禁用锁屏时钟红1')
-    apk = ApkFile('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
-    apk.decode()
-
-    smali = apk.open_smali('com/oplus/keyguard/clock/base/widget/CustomizedTextView.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'setHourText'
-    specifier.parameters = 'Z'
-    smali.method_nop(specifier)
-
-    apk.build()
-
-
-@modified('my_stock/app/Clock/Clock.apk')
-def disable_launcher_clock_red_one():
-    log('禁用桌面时钟小部件红1')
-    apk = ApkFile('my_stock/app/Clock/Clock.apk')
-    apk.decode()
-
-    smali = apk.find_smali('"DeviceUtils"', '"not found class:com.oplus.widget.OplusTextClock"').pop()
-    specifier = MethodSpecifier()
-    specifier.access = MethodSpecifier.Access.PUBLIC
-    specifier.is_static = True
-    specifier.parameters = ''
-    specifier.return_type = 'Z'
-    specifier.keywords.add('"not found class:com.oplus.widget.OplusTextClock"')
-    smali.method_return_boolean(specifier, False)
-
-    apk.build()
-
-
 @modified('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
 def patch_launcher():
     apk = ApkFile('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
@@ -244,7 +211,7 @@ def patch_launcher():
     const/4 v0, 0x1
 
     iput-boolean v0, p0, Lcom/oplus/quickstep/memory/MemoryInfoManager;->mAllowMemoryInfoDisplay:Z
-    
+
     invoke-direct {p0, v0}, Lcom/oplus/quickstep/memory/MemoryInfoManager;->saveAllowMemoryInfoDisplay(Z)Z
 
     return-void
@@ -274,11 +241,99 @@ def patch_launcher():
 '''
     repl = r'''
     const/4 \g<2>, 0x1
-    
+
     \g<1>
 '''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
+
+    apk.build()
+
+
+@modified('my_stock/app/KeKeThemeSpace.apk')
+def patch_theme_store():
+    apk = ApkFile('my_stock/app/KeKeThemeSpace.apk')
+    apk.decode()
+
+    log('去除主题商店广告')
+    # Remove splash ads
+    smali = apk.find_smali('"s-1"', '"getSplashScreen finish splashDto is null"', package='com/nearme/themespace/ad/self').pop()
+    specifier = MethodSpecifier()
+    specifier.parameters = 'Lcom/oppo/cdo/card/theme/dto/SplashDto;Landroid/os/Handler;'
+    specifier.return_type = 'V'
+    specifier.keywords.add('"s-1"')
+    specifier.keywords.add('"getSplashScreen finish splashDto is null"')
+
+    old_body = smali.find_method(specifier)
+    pattern = '''\
+(\\.method public \\S+\\(Lcom/oppo/cdo/card/theme/dto/SplashDto;Landroid/os/Handler;\\)V)
+(?:.|\n)*?
+    iget-object (?:[v|p]\\d+, ){2}(Lcom/nearme/themespace/ad/self/SelfSplashAdManager\\S+;->\\S+:Lcom/nearme/themespace/ad/self/SelfSplashAdManager;)
+(?:.|\n)*?
+    const-string(?:/jumbo)? [v|p]\\d+, "s-1"
+(?:.|\n)*?
+    const-string [v|p]\\d+, "getSplashScreen finish splashDto is null"
+(?:.|\n)*?
+    invoke-static {(?:[v|p]\\d+, ){3}[v|p]\\d+}, (Lcom/nearme/themespace/ad/self/SelfSplashAdManager;->\\S+\\(Lcom/nearme/themespace/ad/self/SelfSplashAdManager;Ljava/lang/String;Ljava/lang/String;Z\\)V)
+'''
+    match = re.search(pattern, old_body)
+    new_body = f'''\
+{match.group(1)}
+    .locals 3
+
+    move-object/from16 v0, p0
+    
+    iget-object v0, v0, {match.group(2)}
+
+    const-string v1, ""
+    
+    const/4 v2, 0x1
+    
+    invoke-static {{v0, v1, v1, v2}}, {match.group(3)}
+
+    return-void
+.end method
+'''
+    smali.method_replace(old_body, new_body)
+
+    # Remove theme preview ads
+    smali = apk.open_smali('com/oppo/cdo/theme/domain/dto/response/HorizontalDto.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'getCode'
+    smali.method_return_int(specifier, 0)
+
+    apk.build()
+
+
+@modified('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
+def disable_lock_screen_red_one():
+    log('禁用锁屏时钟红1')
+    apk = ApkFile('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
+    apk.decode()
+
+    smali = apk.open_smali('com/oplus/keyguard/clock/base/widget/CustomizedTextView.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'setHourText'
+    specifier.parameters = 'Z'
+    smali.method_nop(specifier)
+
+    apk.build()
+
+
+@modified('my_stock/app/Clock/Clock.apk')
+def disable_launcher_clock_red_one():
+    log('禁用桌面时钟小部件红1')
+    apk = ApkFile('my_stock/app/Clock/Clock.apk')
+    apk.decode()
+
+    smali = apk.find_smali('"DeviceUtils"', '"not found class:com.oplus.widget.OplusTextClock"').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.is_static = True
+    specifier.parameters = ''
+    specifier.return_type = 'Z'
+    specifier.keywords.add('"not found class:com.oplus.widget.OplusTextClock"')
+    smali.method_return_boolean(specifier, False)
 
     apk.build()
 
@@ -643,22 +698,6 @@ def patch_miui_services():
     apk = ApkFile('system_ext/framework/miui-services.jar')
     apk.decode()
 
-    log('防止主题恢复')
-    smali = apk.open_smali('com/android/server/am/ActivityManagerServiceImpl.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'finishBooting'
-    specifier.parameters = ''
-    old_body = smali.find_method(specifier)
-    pattern = '''\
-    invoke-static {.+?}, Lmiui/drm/DrmBroadcast;->getInstance\\(Landroid/content/Context;\\)Lmiui/drm/DrmBroadcast;
-
-    move-result-object .+?
-
-    invoke-virtual {.+?}, Lmiui/drm/DrmBroadcast;->broadcast\\(\\)V
-'''
-    new_body = re.sub(pattern, '', old_body)
-    smali.method_replace(old_body, new_body)
-
     log('允许对任意应用截屏')
     smali = apk.open_smali('com/android/server/wm/WindowManagerServiceImpl.smali')
     specifier = MethodSpecifier()
@@ -670,112 +709,6 @@ def patch_miui_services():
     for file in glob('system_ext/framework/**/miui-services.*', recursive=True):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
-
-
-@modified('product/app/MIUIThemeManager/MIUIThemeManager.apk')
-def patch_theme_manager():
-    apk = ApkFile('product/app/MIUIThemeManager/MIUIThemeManager.apk')
-    apk.decode()
-
-    log('去除主题商店广告')
-    smali = apk.open_smali('com/android/thememanager/basemodule/ad/model/AdInfoResponse.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'isAdValid'
-    smali.method_return_boolean(specifier, False)
-
-    # Filter advertising elements
-    smali = apk.find_smali('"DetailRecommendFactory.java"').pop()
-    specifier = MethodSpecifier()
-    specifier.parameters = 'Lcom/android/thememanager/router/recommend/entity/UICard;'
-    specifier.return_type = 'Ljava/util/List;'
-
-    old_body = smali.find_method(specifier)
-    pattern = '''\
-    :goto_(\\d)
-    invoke-interface {.+?}, Ljava/util/Iterator;->hasNext\\(\\)Z
-'''
-    match = re.search(pattern, old_body)
-    goto = match.group(1)
-    pattern = '''\
-    check-cast ([v|p]\\d), Lcom/android/thememanager/router/recommend/entity/UIImageWithLink;
-(?:.|\n)*?
-    const/4 ([v|p]\\d), 0x1
-'''
-    repl = f'''\
-    check-cast \\g<1>, Lcom/android/thememanager/router/recommend/entity/UIImageWithLink;
-
-    iget-object \\g<2>, \\g<1>, Lcom/android/thememanager/router/recommend/entity/UIImageWithLink;->adInfo:Lcom/android/thememanager/basemodule/ad/model/AdInfoResponse;
-
-    if-nez \\g<2>, :goto_{goto}
-
-    const/4 \\g<2>, 0x1
-'''
-    new_body = re.sub(pattern, repl, old_body)
-    smali.method_replace(old_body, new_body)
-
-    log('破解主题免费')
-    smali = apk.open_smali('com/android/thememanager/detail/theme/model/OnlineResourceDetail.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'toResource'
-    specifier.return_type = 'Lcom/android/thememanager/basemodule/resource/model/Resource;'
-
-    old_body = smali.find_method(specifier)
-    pattern = '''\
-    return-object ([v|p]\\d)
-'''
-    match = re.search(pattern, old_body)
-    register1 = match.group(1)
-    num = int(register1[1:]) - 1
-    if num < 0:
-        num += 2
-    register2 = f'{register1[:1]}{num}'
-
-    repl = f'''\
-    const/4 {register2}, 0x1
-
-    iput-boolean {register2}, p0, Lcom/android/thememanager/detail/theme/model/OnlineResourceDetail;->bought:Z
-
-    return-object {register1}
-'''
-    new_body = old_body.replace(match.group(0), repl)
-    smali.method_replace(old_body, new_body)
-
-    smali = apk.open_smali('com/android/thememanager/basemodule/views/DiscountPriceView.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'setPrice'
-    specifier.parameters = 'II'
-
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    lines.insert(12, 'const/4 p1, 0x0')
-    lines.insert(13, 'const/4 p2, 0x0')
-    smali.method_replace(old_body, '\n'.join(lines))
-
-    smali = apk.find_smali('"DrmService.java"', '"theme"', '"check rights isLegal: "').pop()
-    specifier = MethodSpecifier()
-    specifier.parameters = 'Lcom/android/thememanager/basemodule/resource/model/Resource;'
-    specifier.return_type = 'Lmiui/drm/DrmManager$DrmResult;'
-
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    new_body = f'''\
-{lines[0]}
-    .locals 0
-
-    sget-object p0, Lmiui/drm/DrmManager$DrmResult;->DRM_SUCCESS:Lmiui/drm/DrmManager$DrmResult;
-
-    return-object p0
-.end method
-'''
-    smali.method_replace(old_body, new_body)
-
-    smali = apk.open_smali('com/miui/maml/widget/edit/MamlutilKt.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'themeManagerSupportPaidWidget'
-    specifier.parameters = 'Landroid/content/Context;'
-    smali.method_return_boolean(specifier, False)
-
-    apk.build()
 
 
 @modified('product/priv-app/MiuiMms/MiuiMms.apk')
@@ -1045,6 +978,7 @@ def run_on_rom():
     patch_oplus_services()
     patch_system_ui()
     patch_launcher()
+    patch_theme_store()
     disable_lock_screen_red_one()
     disable_launcher_clock_red_one()
     show_touchscreen_panel_info()
