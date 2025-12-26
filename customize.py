@@ -235,7 +235,7 @@ def patch_launcher():
     pattern = r'''
     invoke-static {}, Lcom/android/launcher/mode/LauncherModeManager;->getInstance\(\)Lcom/android/launcher/mode/LauncherModeManager;
 (?:.|\n)*?
-    move-result (?:[v|p]\d+)
+    move-result [v|p]\d+
 
     (sput ([v|p]\d+), Lcom/android/launcher3/Workspace;->DEFAULT_PAGE:I)
 '''
@@ -391,21 +391,21 @@ def show_netmask_and_gateway():
 
     smali = apk.open_smali('com/oplus/wirelesssettings/wifi/detail2/WifiAddressController.smali')
     old_body = smali.find_constructor('Landroid/content/Context;Lcom/android/wifitrackerlib/WifiEntry;')
-    context_field = re.search(r'iput-object p1, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+?):Landroid/content/Context;', old_body).group(1)
+    context_field = re.search(r'iput-object p1, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+):Landroid/content/Context;', old_body).group(1)
 
     specifier = MethodSpecifier()
     specifier.name = 'displayPreference'
     specifier.parameters = 'Landroidx/preference/PreferenceScreen;'
     old_body = smali.find_method(specifier)
     pattern1 = r'''
-    const-string (?:[v|p]\d+), "{key}"
+    const-string [v|p]\d+, "{key}"
 '''
     pattern2 = r'''
-    invoke-virtual {p1, (?:[v|p]\d+)}, Landroidx/preference/PreferenceGroup;->findPreference\(Ljava/lang/CharSequence;\)Landroidx/preference/Preference;
+    invoke-virtual {p1, [v|p]\d+}, Landroidx/preference/PreferenceGroup;->findPreference\(Ljava/lang/CharSequence;\)Landroidx/preference/Preference;
 
-    move-result-object (?:[v|p]\d+)
+    move-result-object [v|p]\d+
 
-    iput-object (?:[v|p]\d+), p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+?):Landroidx/preference/Preference;
+    iput-object [v|p]\d+, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+):Landroidx/preference/Preference;
 '''
     ip_preference_field = re.search(f'{pattern1.format(key='current_ip_address')}{pattern2}', old_body).group(1)
     ipv4_preference_field = re.search(f'{pattern1.format(key='current_ipv4_address')}{pattern2}', old_body).group(1)
@@ -427,7 +427,7 @@ def show_netmask_and_gateway():
     pattern = f'''\
     .locals 1
 ((?:.|\\n)*?
-    invoke-virtual {{p0}}, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->\\S+?\\(\\)Z
+    invoke-virtual {{p0}}, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->\\S+\\(\\)Z
 )
     move-result p0
 ((?:.|\\n)*?
@@ -489,11 +489,11 @@ def patch_settings():
     pattern = r'''
     invoke-virtual {p0, ([v|p]\d+)}, Lcom/oplus/settings/feature/appmanager/AppInfoFeature;->getVersionName\(Landroid/content/pm/PackageInfo;\)Ljava/lang/CharSequence;
 (?:.|\n)*?
-    invoke-virtual {p1, (?:[v|p]\d+), (?:[v|p]\d+)}, Landroidx/fragment/app/Fragment;->getString\(I\[Ljava/lang/Object;\)Ljava/lang/String;
+    invoke-virtual {p1, [v|p]\d+, [v|p]\d+}, Landroidx/fragment/app/Fragment;->getString\(I\[Ljava/lang/Object;\)Ljava/lang/String;
 
-    move-result-object (?:[v|p]\d+)
+    move-result-object [v|p]\d+
 
-    invoke-virtual {([v|p]\d+), (?:[v|p]\d+)}, Landroid/widget/TextView;->setText\(Ljava/lang/CharSequence;\)V
+    invoke-virtual {([v|p]\d+), [v|p]\d+}, Landroid/widget/TextView;->setText\(Ljava/lang/CharSequence;\)V
 '''
     repl = r'''
     invoke-static {\g<2>, \g<1>}, Lcom/meolunr/colorcleaner/CcInjector;->setPackageAndVersion(Landroid/widget/TextView;Landroid/content/pm/PackageInfo;)V
@@ -510,7 +510,7 @@ def patch_tele_service():
     apk.decode()
 
     log('显示首选网络类型')
-    smali = apk.find_smali('"SIMS_OplusSimInfoActivity"', '"changeNetworkModeConfig type:"').pop()
+    smali = apk.find_smali('"SIMS_OplusSimInfoActivity"', '"changeNetworkModeConfig type:"', package='com/android/simsettings/activity').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
     specifier.parameters = 'ILjava/lang/String;Z'
@@ -528,24 +528,24 @@ def patch_tele_service():
     smali.method_insert_before(specifier, insert)
 
     log('去除移动网络中的流量卡广告')
-    smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"').pop()
+    smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"', package='androidx/appcompat/widget').pop()
     specifier = MethodSpecifier()
     specifier.name = 'run'
     specifier.parameters = ''
 
     old_body = smali.find_method(specifier)
     pattern = r'''
-    sget-object (?:[v|p]\d+), Lcom/android/phone/ConfigurationConstants;->INSTANCE:Lcom/android/phone/ConfigurationConstants;
+    sget-object [v|p]\d+, Lcom/android/phone/ConfigurationConstants;->INSTANCE:Lcom/android/phone/ConfigurationConstants;
 
-    invoke-virtual {(?:[v|p]\d+)}, Lcom/android/phone/ConfigurationConstants;->getTRAFFIC_CARD_PACKAGE_NAME\(\)Ljava/lang/String;
+    invoke-virtual {[v|p]\d+}, Lcom/android/phone/ConfigurationConstants;->getTRAFFIC_CARD_PACKAGE_NAME\(\)Ljava/lang/String;
 
-    move-result-object (?:[v|p]\d+)
+    move-result-object [v|p]\d+
 
-    const-string (?:[v|p]\d+), "basewallet_traffic_card_support"
+    const-string [v|p]\d+, "basewallet_traffic_card_support"
 
-    const-string (?:[v|p]\d+), "true"
+    const-string [v|p]\d+, "true"
 
-    invoke-static {(?:(?:[v|p]\d+), ){3}(?:[v|p]\d+)}, Lcom/android/phone/oplus/share/.+?;->.+?\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
+    invoke-static {(?:[v|p]\d+, ){3}[v|p]\d+}, Lcom/android/phone/oplus/share/\S+;->\S+\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
 
     move-result ([v|p]\d+)
 '''
@@ -574,11 +574,11 @@ def remove_traffic_monitor_ads():
 
     old_body = smali.find_method(specifier)
     pattern = r'''
-    const-string (?:[v|p]\d+), "basewallet_traffic_card_support"
+    const-string [v|p]\d+, "basewallet_traffic_card_support"
 
-    const-string (?:[v|p]\d+), "true"
+    const-string [v|p]\d+, "true"
 
-    invoke-static {p1(?:, [v|p]\d+){3}}, L.+?;->.+?\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
+    invoke-static {p1(?:, [v|p]\d+){3}}, L\S+;->\S+\(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;\)Z
 
     move-result ([v|p]\d+)
 '''
@@ -615,13 +615,13 @@ def show_icon_for_silent_notification():
 
     old_body = smali.find_method(specifier)
     pattern = '''\
-    const-string (?:[v|p]\\d+), "hide_silence_notification_icon_enable"
+    const-string [v|p]\\d+, "hide_silence_notification_icon_enable"
 
     invoke-static {}, Lcom/oplus/notificationmanager/config/BaseFeatureOption;->isExpVersion\\(\\)Z
 
-    move-result (?:[v|p]\\d+)
+    move-result [v|p]\\d+
 
-    invoke-static {(?:(?:[v|p]\\d+), ){3}(?:[v|p]\\d+)}, Lcom/oplus/notificationmanager/view/PerferenceExKt;->\
+    invoke-static {(?:[v|p]\\d+, ){3}[v|p]\\d+}, Lcom/oplus/notificationmanager/view/PerferenceExKt;->\
 initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String;Ljava/lang/Class;Z\\)Landroidx/preference/Preference;
 '''
     new_body = re.sub(pattern, '', old_body)
