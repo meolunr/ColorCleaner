@@ -302,6 +302,28 @@ def patch_theme_store():
     specifier.name = 'getCode'
     smali.method_return_int(specifier, 0)
 
+    log('破解主题免费')
+    smali = apk.open_smali('com/oppo/cdo/card/theme/dto/vip/VipUserDto.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'getVipStatus'
+    smali.method_return_int(specifier, 1)
+
+    specifier = MethodSpecifier()
+    specifier.name = 'getVipDays'
+    smali.method_return_int(specifier, 999)
+
+    smali = apk.open_smali('com/oppo/cdo/theme/domain/dto/response/PublishProductItemDto.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'getIsVipAvailable'
+    smali.method_return_int(specifier, 1)
+
+    log('防止主题恢复')
+    smali = apk.open_smali('com/nearme/themespace/trial/ThemeTrialExpireReceiver.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'onReceive'
+    specifier.parameters = 'Landroid/content/Context;Landroid/content/Intent;'
+    smali.method_return_null(specifier)
+
     apk.build()
 
 
