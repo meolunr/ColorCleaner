@@ -530,6 +530,33 @@ def patch_phone_manager():
 '''
     smali.method_replace(specifier, new_body)
 
+    log('去除手机管家中的安全事件')
+    smali = apk.find_smali('MainWithMenuFragment.kt', '"com.coloros.securityguard"', package='com/oplus/phonemanager').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PRIVATE
+    specifier.is_final = True
+    specifier.parameters = 'Landroid/content/Context;Landroid/view/Menu;'
+    specifier.return_type = 'V'
+    specifier.keywords.add('"com.coloros.securityguard"')
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    new-instance [v|p]\d+, Landroid/content/Intent;
+(?:.|\n)*?
+    invoke-direct {[v|p]\d+}, Landroid/content/Intent;-><init>\(\)V
+(?:.|\n)*?
+    const-string [v|p]\d+, "coloros\.intent\.action\.SECURITY_GUARD"
+(?:.|\n)*?
+(    const [v|p]\d+, .+
+(?:.|\n)*?
+    invoke-interface {[v|p]\d+, [v|p]\d+}, Landroid/view/Menu;->removeItem\(I\)V)
+'''
+    repl = r'''
+\g<1>
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
     apk.build()
 
 
