@@ -74,11 +74,21 @@ class SmaliFile:
             file.write(text)
 
     def method_return_boolean(self, specifier: MethodSpecifier, value: bool):
+        self.method_return_int(specifier, int(value))
+
+    def method_return_int(self, specifier: MethodSpecifier, value: int):
+        if -8 <= value < 8:
+            const_instruction = 'const/4'
+        elif -32768 <= value < 32768:
+            const_instruction = 'const/16'
+        else:
+            const_instruction = 'const'
+
         old_body = self.find_method(specifier)
         new_body = old_body.splitlines()[0] + f'''
     .locals 1
 
-    const/4 v0, 0x{1 if value else 0}
+    {const_instruction} v0, {hex(value)}
 
     return v0
 .end method\
@@ -91,7 +101,7 @@ class SmaliFile:
     .locals 1
 
     const/4 v0, 0x0
-    
+
     return-object v0
 .end method\
 '''

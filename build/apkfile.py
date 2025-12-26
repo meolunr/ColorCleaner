@@ -40,10 +40,11 @@ class ApkFile:
                 return SmaliFile(assumed_path)
         return None
 
-    def find_smali(self, *keywords: str):
+    def find_smali(self, *keywords: str, package: str = None):
+        package_path = f'{package}/' if package else ''
         results = set[SmaliFile]()
         # See: https://docs.python.org/3/using/windows.html#removing-the-max-path-limitation
-        for file in glob(f'{self.output}/smali*/**/*.smali', recursive=True):
+        for file in glob(f'{self.output}/smali/classes*/{package_path}**/*.smali', recursive=True):
             keyword_set = set(keywords)
             with open(file, 'r', encoding='utf-8') as f:
                 for line in f:
