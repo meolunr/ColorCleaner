@@ -557,6 +557,23 @@ def patch_phone_manager():
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
 
+    log('禁用应用安装监控')
+    smali = apk.open_smali('com/oplus/phonemanager/virusdetect/receiver/RealTimeMonitorReceiver.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'onReceive'
+    specifier.parameters = 'Landroid/content/Context;Landroid/content/Intent;'
+    smali.method_return_null(specifier)
+
+    log('病毒扫描永远安全')
+    smali = apk.find_smali('"InfectedAppDao_Impl.java"', '"select * from infected_app"').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.parameters = 'Ljava/util/List;'
+    specifier.return_type = 'V'
+    specifier.keywords.add('"Lcom/oplus/phonemanager/virusdetect/database/entity/InfectedApp;"')
+    specifier.keywords.add('->insert(Ljava/lang/Iterable;)V')
+    smali.method_nop(specifier)
+
     apk.build()
 
 
@@ -816,198 +833,6 @@ def remove_mms_ads():
         old_body = smali.find_method(specifier)
         new_body = re.sub(pattern, repl, old_body)
         smali.method_replace(old_body, new_body)
-
-    apk.build()
-
-
-@modified('product/priv-app/MIUISecurityCenter/MIUISecurityCenter.apk')
-def patch_security_center():
-    apk = ApkFile('product/priv-app/MIUISecurityCenter/MIUISecurityCenter.apk')
-    apk.decode()
-
-    log('显示电池健康度')
-    smali = apk.find_smali('.class Lcom/miui/powercenter/nightcharge/ChargeProtectFragment$', '.super Landroid/os/Handler;').pop()
-    specifier = MethodSpecifier()
-    specifier.name = 'handleMessage'
-    specifier.parameters = 'Landroid/os/Message;'
-    old_body = smali.find_method(specifier)
-
-    utils_smali = apk.find_smali('"BatteryHealthUtils"').pop()
-    utils_type_signature = utils_smali.get_type_signature()
-
-    specifier = MethodSpecifier()
-    specifier.keywords.add('"persist.vendor.smart.battMntor"')
-    method_signature_1 = utils_smali.find_method(specifier).splitlines()[0].split(' ')[-1]
-    specifier.keywords.clear()
-    specifier.keywords.add('"key_get_battery_health_value"')
-    method_signature_2 = utils_smali.find_method(specifier).splitlines()[0].split(' ')[-1]
-    specifier.keywords.clear()
-    specifier.keywords.add('"getBatterySoh: "')
-    method_signature_3 = utils_smali.find_method(specifier).splitlines()[0].split(' ')[-1]
-
-    pattern = f'''\
-    invoke-static {{}}, {utils_type_signature}->{re.escape(method_signature_1)}
-
-    move-result .+?
-
-    if-eqz .+?, :cond_\\d
-
-    invoke-static {{}}, {utils_type_signature}->{re.escape(method_signature_2)}
-
-    move-result ([v|p]\\d)
-'''
-    repl = f'''\
-    invoke-static {{}}, {utils_type_signature}->{method_signature_3}
-
-    move-result-object \\g<1>
-
-    :try_start_114
-    invoke-static {{\\g<1>}}, Ljava/lang/Integer;->parseInt(Ljava/lang/String;)I
-
-    move-result \\g<1>
-    :try_end_514
-    .catch Ljava/lang/NumberFormatException; {{:try_start_114 .. :try_end_514}} :catch_1919
-
-    goto :goto_810
-
-    :catch_1919
-    move-exception \\g<1>
-
-    const/4 \\g<1>, -0x1
-
-    :goto_810
-'''
-    new_body = re.sub(pattern, repl, old_body)
-    smali.method_replace(old_body, new_body)
-
-    log('显示电池温度')
-    smali = apk.open_smali('com/miui/powercenter/nightcharge/ChargeProtectFragment.smali')
-    specifier = MethodSpecifier()
-    specifier.parameters = 'Landroid/content/Context;'
-    specifier.return_type = 'Ljava/lang/String;'
-    specifier.is_static = True
-    specifier.keywords.add('-0x80000000')
-    old_body = smali.find_method(specifier)
-
-    pattern = f'''\
-    invoke-static {{p0}}, L.+?;->.+?\\(Landroid/content/Context;\\)I
-
-    move-result ([v|p]\\d)
-
-    invoke-static {{p0}}, L.+?;->.+?\\(Landroid/content/Context;\\)I
-
-    move-result ([v|p]\\d)
-
-    const/high16 .+?, -0x80000000
-(?:.|\\n)*?
-    const/4 ([v|p]\\d), 0x5
-
-    if-le .+?, \\3, :cond_(\\d)
-
-    :cond_\\d
-    move \\1, \\2
-
-    :cond_\\4
-'''
-    match = re.search(pattern, old_body)
-    register1 = match.group(1)
-    register2 = match.group(2)
-    cond = match.group(4)
-
-    pattern = f'''\
-    :cond_{cond}
-(?:.|\\n)*?
-.end method'''
-    repl = f'''\
-    :cond_{cond}
-    new-instance {register2}, Ljava/lang/StringBuilder;
-
-    invoke-direct {{{register2}}}, Ljava/lang/StringBuilder;-><init>()V
-
-    invoke-virtual {{{register2}, {register1}}}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
-
-    const-string {register1}, "℃"
-
-    invoke-virtual {{{register2}, {register1}}}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-
-    invoke-virtual {{{register2}}}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-
-    move-result-object {register1}
-
-    return-object {register1}
-.end method'''
-    new_body = re.sub(pattern, repl, old_body)
-    smali.method_replace(old_body, new_body)
-
-    log('手机管家 100 分')
-    # Lock 100 score
-    smali = apk.open_smali('com/miui/securityscan/scanner/ScoreManager.smali')
-    specifier = MethodSpecifier()
-    specifier.return_type = 'I'
-    specifier.keywords.add('getMinusPredictScore')
-
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    new_body = f'''\
-{lines[0]}
-    .locals 0
-
-    const/16 p0, 0x0
-
-    return p0
-.end method
-'''
-    smali.method_replace(old_body, new_body)
-
-    # Disable click events
-    smali = apk.open_smali('com/miui/securityscan/ui/main/MainContentFrame.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'onClick'
-    specifier.parameters = 'Landroid/view/View;'
-    smali.method_nop(specifier)
-
-    log('去除危险操作倒计时确认')
-    smali = apk.open_smali('com/miui/permcenter/privacymanager/model/InterceptBaseActivity.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'onCreate'
-    specifier.parameters = 'Landroid/os/Bundle;'
-
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    locals_line = list(lines[1])
-    if int(locals_line[-1]) < 2:
-        locals_line[-1] = '2'
-    lines[1] = ''.join(locals_line)
-    new_body = '\n'.join(lines)
-
-    pattern = '''\
-    invoke-super {p0, p1}, Lmiuix/appcompat/app/AppCompatActivity;->onCreate\\(Landroid/os/Bundle;\\)V
-'''
-    repl = '''\\g<0>
-    if-nez p1, :cond_114514
-
-    new-instance v0, Landroid/os/Bundle;
-
-    invoke-direct {v0}, Landroid/os/Bundle;-><init>()V
-
-    move-object p1, v0
-
-    :cond_114514
-
-    const-string v0, "KET_STEP_COUNT"
-
-    const/4 v1, 0x0
-
-    invoke-virtual {p1, v0, v1}, Landroid/os/Bundle;->putInt(Ljava/lang/String;I)V
-
-    const-string v0, "KEY_ALLOW_ENABLE"
-
-    const/4 v1, 0x1
-
-    invoke-virtual {p1, v0, v1}, Landroid/os/Bundle;->putBoolean(Ljava/lang/String;Z)V
-'''
-    new_body = re.sub(pattern, repl, new_body)
-    smali.method_replace(old_body, new_body)
 
     apk.build()
 
