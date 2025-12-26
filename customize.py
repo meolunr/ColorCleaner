@@ -66,7 +66,7 @@ def rm_files():
 
 
 def replace_installer():
-    log('替换 PUIPackageInstaller')
+    log('替换 PUI 软件包安装程序')
     shutil.rmtree('system_ext/priv-app/OppoPackageInstaller')
 
     pui_dir = 'system_ext/priv-app/PUIPackageInstaller'
@@ -317,7 +317,7 @@ def patch_theme_store():
     specifier.name = 'getIsVipAvailable'
     smali.method_return_int(specifier, 1)
 
-    log('防止主题恢复')
+    log('禁用主题自动恢复')
     smali = apk.open_smali('com/nearme/themespace/trial/ThemeTrialExpireReceiver.smali')
     specifier = MethodSpecifier()
     specifier.name = 'onReceive'
@@ -582,7 +582,7 @@ def patch_tele_service():
     apk = ApkFile('system_ext/priv-app/TeleService/TeleService.apk')
     apk.decode()
 
-    log('显示首选网络类型')
+    log('显示首选网络类型设置')
     smali = apk.find_smali('"SIMS_OplusSimInfoActivity"', '"changeNetworkModeConfig type:"', package='com/android/simsettings/activity').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
