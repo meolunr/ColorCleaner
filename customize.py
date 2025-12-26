@@ -74,7 +74,7 @@ def replace_installer():
     shutil.copy(f'{MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
 
 
-def remove_activity_start_dialog():
+def disable_activity_start_dialog():
     log('禁用关联启动对话框')
     xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
     root = xml.get_root()
@@ -500,6 +500,35 @@ def patch_settings():
 '''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
+
+    apk.build()
+
+
+@modified('my_stock/priv-app/PhoneManager/PhoneManager.apk')
+def patch_phone_manager():
+    apk = ApkFile('my_stock/priv-app/PhoneManager/PhoneManager.apk')
+    apk.decode()
+
+    log('去除手机管家广告')
+    smali = apk.find_smali('"AdHelper.kt"', '"ro.vendor.oplus.market.name"', package='com/oplus/phonemanager/common/ad').pop()
+    specifier = MethodSpecifier()
+    specifier.name = 'invoke'
+    specifier.return_type = 'Ljava/lang/Boolean;'
+    specifier.keywords.add('"ro.vendor.oplus.market.name"')
+    new_body = '''\
+.method public final invoke()Ljava/lang/Boolean;
+    .locals 1
+
+    const/4 v0, 0x0
+
+    invoke-static {v0}, Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;
+
+    move-result-object v0
+
+    return-object v0
+.end method\
+'''
+    smali.method_replace(specifier, new_body)
 
     apk.build()
 
@@ -995,7 +1024,7 @@ def not_update_modified_app():
 def run_on_rom():
     rm_files()
     replace_installer()
-    remove_activity_start_dialog()
+    disable_activity_start_dialog()
     turn_off_flashlight_with_power_key()
     patch_oplus_services()
     patch_system_ui()
@@ -1006,6 +1035,7 @@ def run_on_rom():
     show_touchscreen_panel_info()
     show_netmask_and_gateway()
     patch_settings()
+    patch_phone_manager()
     patch_tele_service()
     remove_traffic_monitor_ads()
     show_icon_for_silent_notification()

@@ -11,6 +11,7 @@ MODIFY_PACKAGE = (
     'com.oplus.engineermode',
     'com.oplus.wirelesssettings',
     'com.android.settings',
+    'com.coloros.phonemanager',
     'com.android.phone',
     'com.oplus.trafficmonitor',
     'com.oplus.notificationmanager',
