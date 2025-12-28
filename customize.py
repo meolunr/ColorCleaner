@@ -74,6 +74,21 @@ def replace_installer():
     shutil.copy(f'{MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
 
 
+def disable_cn_gms():
+    log('禁用国行 GMS 限制')
+    xml = XmlFile('my_product/etc/permissions/oplus_google_cn_gms_features.xml')
+    root = xml.get_root()
+    element = root.find('feature[@name="cn.google.services"]')
+    root.remove(element)
+    xml.commit()
+
+    with open('system/system/etc/init/hw/init.rc', 'r+', encoding='utf-8', newline='') as f:
+        content = re.sub(r'(?<=setprop remote_provisioning\.hostname remoteprovisioning\.)googleapis\.com(?=\n)', 'grapheneos.org', f.read())
+        f.seek(0)
+        f.truncate()
+        f.write(content)
+
+
 def disable_activity_start_dialog():
     log('禁用关联启动对话框')
     xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
@@ -876,6 +891,7 @@ def not_update_modified_app():
 def run_on_rom():
     rm_files()
     replace_installer()
+    disable_cn_gms()
     disable_activity_start_dialog()
     turn_off_flashlight_with_power_key()
     patch_oplus_services()

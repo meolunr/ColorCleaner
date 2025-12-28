@@ -19,7 +19,7 @@ MODIFY_PACKAGE = (
     'com.coloros.calendar'
 )
 MODIFY_DELETABLE_APK = (
-    'my_stock/del-app/KeKeThemeSpace/KeKeThemeSpace.apk'
+    'my_stock/del-app/KeKeThemeSpace/KeKeThemeSpace.apk',
     'my_stock/del-app/Clock/Clock.apk',
     'my_stock/del-app/Calendar/Calendar.apk'
 )
