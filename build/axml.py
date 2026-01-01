@@ -12,9 +12,11 @@ class Chunk:
 
 
 class StringChunk(Chunk):
+    # @formatter:off
     _FORMAT_STRING = ('<2I'  # string count, style count
-                      '2H'  # utf-8, sorted (flags)
+                      '2H'   # utf-8, sorted (flags)
                       '2I')  # strings start, styles start
+    # @formatter:on
 
     def __init__(self, f: BytesIO):
         super().__init__(f)
@@ -41,15 +43,19 @@ class StartNamespaceChunk(Chunk):
 
 class StartTagChunk(Chunk):
     TYPE = 0x102
+    # @formatter:off
     _FORMAT_STRING = ('<2I'  # line number, comment
-                      '2I'  # namespace uri, name
-                      '3H'  # start, size, count (attribute)
+                      '2I'   # namespace uri, name
+                      '3H'   # start, size, count (attribute)
                       '3H')  # id index, class index, style index
+    # @formatter:on
 
     class Attribute:
         SIZE = 20
-        _FORMAT_STRING = ('<3I'  # namespace uri, name, raw value
+        # @formatter:off
+        _FORMAT_STRING = ('<3I'    # namespace uri, name, raw value
                           'H2BI')  # size, res0, data type, data
+        # @formatter:on
         DATA_TYPE_REFERENCE = 0x01
         DATA_TYPE_STRING = 0x03
         DATA_TYPE_BOOLEAN = 0x12

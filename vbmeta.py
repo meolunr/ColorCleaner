@@ -15,20 +15,22 @@ class AvbHeader:
     FLAG_DISABLE_VERIFICATION = 0x2
     _MAGIC = b'AVB0'
     _RESERVED = 80
-    _FORMAT_STRING = ('!4s'  # magic
-                      '2L'  # avb version
-                      '2Q'  # 2 * block size
-                      'L'  # algorithm type
-                      '2Q'  # offset, size (hash)
-                      '2Q'  # offset, size (signature)
-                      '2Q'  # offset, size (public key)
-                      '2Q'  # offset, size (public key metadata)
-                      '2Q'  # offset, size (descriptors)
-                      'Q'  # rollback index
-                      'L'  # flags
-                      'L'  # rollback index location
-                      '47sx' +  # NUL-terminated release string
+    # @formatter:off
+    _FORMAT_STRING = ('!4s'                  # magic
+                      '2L'                   # avb version
+                      '2Q'                   # 2 * block size
+                      'L'                    # algorithm type
+                      '2Q'                   # offset, size (hash)
+                      '2Q'                   # offset, size (signature)
+                      '2Q'                   # offset, size (public key)
+                      '2Q'                   # offset, size (public key metadata)
+                      '2Q'                   # offset, size (descriptors)
+                      'Q'                    # rollback index
+                      'L'                    # flags
+                      'L'                    # rollback index location
+                      '47sx' +               # NUL-terminated release string
                       str(_RESERVED) + 'x')  # padding for reserved bytes
+    # @formatter:on
 
     def __init__(self, data: bytes):
         (self.magic, self.avb_version_major, self.avb_version_minor,
@@ -77,9 +79,11 @@ class AvbDescriptor:
 class AvbPropertyDescriptor:
     TAG = 0
     _HEADER_SIZE = 32
+    # @formatter:off
     _FORMAT_STRING = ('!QQ'  # tag, num_bytes_following (descriptor header)
-                      'Q'  # key size (bytes)
-                      'Q')  # value size (bytes)
+                      'Q'    # key size (bytes)
+                      'Q')   # value size (bytes)
+    # @formatter:on
 
     def __init__(self, data):
         (tag, num_bytes_following, key_size, value_size) = struct.unpack(self._FORMAT_STRING, data[0:self._HEADER_SIZE])

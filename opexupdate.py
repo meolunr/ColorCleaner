@@ -1,7 +1,13 @@
+import json
+import re
 from enum import Enum
 from time import time
 
+import requests
+
+import ccglobal
 import config
+from util import crypto
 
 
 class RegionCN(Enum):
@@ -46,47 +52,100 @@ class RegionCN(Enum):
         self.opex_json_root = opex_json_root
 
 
-# @formatter:off
-headers = {
-    'Content-Type' : 'application/json; charset=utf-8',
-    'User-Agent'   : 'Thunder',
-    'language'     : 'zh-CN',
-    'infVersion'   : '1',
-    'mode'         : 'client_auto',
-    'nvCarrier'    : '10010111',
-    'pipelineKey'  : 'ALLNET',
-    'operator'     : 'ALLNET',
-    'brand'        : 'OnePlus',
-    'brandSota'    : 'OnePlus',
-    'osType'       : 'domestic_OnePlus',
-    'deviceId'     : '14BDCD6FD64180AF5E7791DF91B6AF8E9A3E7BC844997EB8C29252706DF97CA5',
-    'queryMode'    : '0'
-}
-request_body = {
-    'mode'         : '0',
-    'time'         : str(int(time() * 1000)),
-    'isRooted'     : '0',
-    'isLocked'     : True,
-    'type'         : '0',
-    'deviceId'     : '14BDCD6FD64180AF5E7791DF91B6AF8E9A3E7BC844997EB8C29252706DF97CA5',
-    'opex'         : {'check': True},
-    'businessList' : []
-}
-# @formatter:on
+def create_headers(prop_file: str):
+    # @formatter:off
+    headers: dict[str, str] = {
+        'Content-Type' : 'application/json; charset=utf-8',
+        'User-Agent'   : 'Thunder',
+        'language'     : 'zh-CN',
+        'infVersion'   : '1',
+        'mode'         : 'client_auto',
+        'nvCarrier'    : '10010111',
+        'pipelineKey'  : 'ALLNET',
+        'operator'     : 'ALLNET',
+        'brand'        : 'OnePlus',
+        'brandSota'    : 'OnePlus',
+        'osType'       : 'domestic_OnePlus',
+        'deviceId'     : '14BDCD6FD64180AF5E7791DF91B6AF8E9A3E7BC844997EB8C29252706DF97CA5',
+        'queryMode'    : '0'
+    }
+    # @formatter:on
 
-def create_header():
-    pass
+    with open(prop_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.startswith('ro.product.model='):
+                headers['model'] = ccglobal.getvalue(line)
+            elif line.startswith('ro.product.name='):
+                headers['productName'] = ccglobal.getvalue(line)
+            elif line.startswith('ro.build.version.release='):
+                headers['androidVersion'] = f'Android{ccglobal.getvalue(line)}'
+            elif line.startswith('ro.build.version.oplusrom='):
+                coloros_version = f'ColorOS{re.match(r'V(\d+\.\d+\.\d+)', ccglobal.getvalue(line)).group(1)}'
+                headers['osVersion'] = coloros_version
+                headers['colorOSVersion'] = coloros_version
+            elif line.startswith('ro.build.display.id='):
+                headers['romVersion'] = ccglobal.getvalue(line)
+            elif line.startswith('ro.build.version.ota='):
+                headers['otaVersion'] = ccglobal.getvalue(line)
+
+    return headers
 
 
-def check_opex_update():
+def create_request_body(headers: dict[str, str]):
+    # @formatter:off
+    request_body: dict[str, str] = {
+        'mode'         : '0',
+        'isRooted'     : '0',
+        'isLocked'     : True,
+        'type'         : '0',
+        'deviceId'     : '14BDCD6FD64180AF5E7791DF91B6AF8E9A3E7BC844997EB8C29252706DF97CA5',
+        'opex'         : {'check': True},
+        'businessList' : [],
+        'time'         : str(int(time() * 1000)),
+        'otaVersion'   : headers['otaVersion']
+    }
+    # @formatter:on
+    return request_body
+
+
+def fetch_opex_update(headers: dict[str, str], request_body: dict[str, str]):
     if config.OPEX_FULL_OTA_CHECK:
         operator = RegionCN.FULL_OTA
     else:
         operator = RegionCN.OPEX
 
+    key, iv, cipher = crypto.aes_encrypt(json.dumps(request_body).encode('utf-8'))
+    request_body = {
+        'cipher': cipher.decode('utf-8'),
+        'iv': iv.decode('utf-8')
+    }
+    if operator.request_body_json_root:
+        request_body = {
+            operator.request_body_json_root: json.dumps(request_body)
+        }
+
+    protected_key = crypto.rsa_encrypt(operator.public_key, key)
+    protected_key_dict = {
+        operator.protected_key_json_root: {
+            'protectedKey': protected_key.decode('utf-8'),
+            'version': str(int(time() + 86400) * 1000),
+            'negotiationVersion': operator.negotiation_version
+        }
+    }
+
+    headers['version'] = operator.request_version
+    headers['protectedKey'] = json.dumps(protected_key_dict)
+
+    response = requests.post(operator.url, data=json.dumps(request_body), headers=headers, timeout=30)
+
+    print(response.content)
+
 
 def run_on_rom():
-    pass
+    headers = create_headers('build.prop')
+    request_body = create_request_body(headers)
+
+    print(fetch_opex_update(headers, request_body))
 
 
 def run_on_module():

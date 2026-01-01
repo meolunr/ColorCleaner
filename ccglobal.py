@@ -15,3 +15,7 @@ kmi: str
 def log(string: str):
     now = datetime.now().strftime('[%m-%d %H:%M:%S]')
     print(f'{now} {string}')
+
+
+def getvalue(prop: str):
+    return prop.rstrip().split('=')[1]
