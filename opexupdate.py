@@ -108,9 +108,21 @@ def create_request_body(headers: dict[str, str]):
     return request_body
 
 
+def get_wrapped_json(keys: str, json_dict: dict):
+    if not keys:
+        return json_dict
+    keys = keys.replace(' ', '')
+    index = keys.find('>')
+
+    if index == -1:
+        return json_dict[keys]
+    return get_wrapped_json(keys[index + 1:], json_dict[keys[:index]])
+
+
 def fetch_opex_update(headers: dict[str, str], request_body: dict[str, str]):
     if config.OPEX_FULL_OTA_CHECK:
         operator = RegionCN.FULL_OTA
+        headers['otaVersion'] = f'{headers['otaVersion'][:-17]}0001_000000000001'
     else:
         operator = RegionCN.OPEX
 
@@ -132,20 +144,26 @@ def fetch_opex_update(headers: dict[str, str], request_body: dict[str, str]):
             'negotiationVersion': operator.negotiation_version
         }
     }
-
     headers['version'] = operator.request_version
     headers['protectedKey'] = json.dumps(protected_key_dict)
 
-    response = requests.post(operator.url, data=json.dumps(request_body), headers=headers, timeout=30)
+    response = requests.post(operator.url, data=json.dumps(request_body), headers=headers)
+    response_body = json.loads(response.content)
+    if operator.response_body_json_root:
+        response_body = json.loads(response_body[operator.response_body_json_root])
 
-    print(response.content)
+    iv = response_body['iv']
+    cipher = response_body['cipher']
+    response_body = json.loads(crypto.aes_decrypt(key, iv.encode('utf-8'), cipher.encode('utf-8')))
+
+    return get_wrapped_json(operator.opex_json_root, response_body)
 
 
 def run_on_rom():
     headers = create_headers('build.prop')
     request_body = create_request_body(headers)
-
-    print(fetch_opex_update(headers, request_body))
+    opex_list = fetch_opex_update(headers, request_body)
+    print(opex_list)
 
 
 def run_on_module():
