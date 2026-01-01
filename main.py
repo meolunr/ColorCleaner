@@ -15,7 +15,6 @@ import appupdate
 import ccglobal
 import config
 import customize
-import opexupdate
 import vbmeta
 from util import imgfile, template
 
@@ -180,9 +179,7 @@ def repack_super():
 
     cmd.append('--force-full-image')
     cmd += ['--output', 'images/super.img']
-    # cmd.append('--sparse')
     subprocess.run(cmd, check=True)
-    # exit()
 
     for partition in config.SUPER_PARTITIONS:
         img = f'images/{partition}.img'
@@ -280,8 +277,6 @@ def make_module():
 
 
 def make_rom(args: argparse.Namespace):
-    opexupdate.run_on_rom()
-    exit()
     ccglobal.log('构建全量包')
     dump_payload(args.zip)
     remove_official_recovery()
@@ -317,7 +312,7 @@ def main():
     subparsers.add_parser('module', help='制作系统更新模块', parents=[out_parser], add_help=False)
     args = parser.parse_args()
 
-    # os.mkdir(args.out_dir)
+    os.mkdir(args.out_dir)
     os.chdir(args.out_dir)
 
     start = datetime.now()
