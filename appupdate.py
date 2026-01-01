@@ -8,9 +8,9 @@ from enum import Enum, auto
 from pathlib import Path
 from zipfile import ZipFile
 
+import ccglobal
 import config
 from build.apkfile import ApkFile
-from ccglobal import LIB_DIR, MISC_DIR, UPDATED_APP_JSON, log
 from util import adb, template
 
 
@@ -60,10 +60,10 @@ def is_adb_connected() -> bool:
     if num == 2:
         return True
     elif num < 2:
-        log('未检测到 adb 设备连接，不再进行系统应用更新')
+        ccglobal.log('未检测到 adb 设备连接，不再进行系统应用更新')
         return False
     else:
-        log('检测到多个 adb 设备连接，不再进行系统应用更新')
+        ccglobal.log('检测到多个 adb 设备连接，不再进行系统应用更新')
         return False
 
 
@@ -102,11 +102,11 @@ def get_app_in_system():
 
 
 def read_record():
-    log('读取系统应用更新记录')
-    json_path = Path(UPDATED_APP_JSON)
+    ccglobal.log('读取系统应用更新记录')
+    json_path = Path(ccglobal.UPDATED_APP_JSON)
     if not json_path.is_file():
         json_path.parent.mkdir(exist_ok=True)
-        adb.pull(f'/{UPDATED_APP_JSON}', json_path)
+        adb.pull(f'/{ccglobal.UPDATED_APP_JSON}', json_path)
         open(json_path, 'a').close()
 
     with open(json_path, 'r', encoding='utf-8') as f:
@@ -120,8 +120,8 @@ def read_record():
 
 def write_record(*, rom: set = None, module: set = None):
     rom_to_be_written, module_to_be_written = read_record()
-    log('写入系统应用更新记录')
-    with open(UPDATED_APP_JSON, 'w+', encoding='utf-8', newline='') as f:
+    ccglobal.log('写入系统应用更新记录')
+    with open(ccglobal.UPDATED_APP_JSON, 'w+', encoding='utf-8', newline='') as f:
         if rom is not None:
             rom_to_be_written = rom
         if module is not None:
@@ -194,7 +194,7 @@ def pull_apk_from_phone(new_apk: str, old_apk: str):
             extract_lib = len(dirs) > 1
 
     if extract_lib:
-        _7z = f'{LIB_DIR}/7za.exe'
+        _7z = f'{ccglobal.LIB_DIR}/7za.exe'
         subprocess.run([_7z, 'e', '-aoa', old_apk, 'lib/arm64-v8a', f'-o{os.path.dirname(old_apk)}/lib/arm64'], stdout=subprocess.DEVNULL)
 
 
@@ -208,7 +208,7 @@ def run_on_rom():
         if app.version_code <= ApkFile(old_apk).version_code():
             # Oplus has updated the apk in ROM
             continue
-        log(f'更新系统应用: {app.rom_old_dir}')
+        ccglobal.log(f'更新系统应用: {app.rom_old_dir}')
         pull_apk_from_phone(app.new_apk, old_apk)
         packages.add(app.package)
 
@@ -237,7 +237,7 @@ def run_on_module():
     package_cache_output = io.StringIO()
 
     for app in apps:
-        log(f'更新系统应用: {app.module_old_dir}')
+        ccglobal.log(f'更新系统应用: {app.module_old_dir}')
         os.makedirs(app.module_old_dir)
         apk_name = os.path.basename(app.module_old_dir)
         pull_apk_from_phone(app.new_apk, f'{app.module_old_dir}/{apk_name}.apk')
@@ -247,6 +247,6 @@ def run_on_module():
         package_cache_output.write(f'rm -f /data/system/package_cache/*/{apk_name}-*\n')
 
     write_record(module=packages)
-    template.substitute(f'{MISC_DIR}/module_template/Patch/customize.sh',
+    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/customize.sh',
                         var_remove_oat=remove_oat_output.getvalue(), var_remove_data_app=remove_data_app_output.getvalue())
-    template.substitute(f'{MISC_DIR}/module_template/Patch/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())
+    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())

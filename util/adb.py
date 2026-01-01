@@ -1,10 +1,9 @@
 import os
 import subprocess
 
+import ccglobal
 import config
-from ccglobal import MISC_DIR, log
 
-_OVERLAYFS = True
 _DATA_TMP_DIR = '/data/local/tmp'
 _MODULE_DIR = '/data/adb/modules/colorcleaner'
 _OVERLAYFS_MODULE_DIR = '/data/adb/metamodule/mnt/colorcleaner'
@@ -31,13 +30,13 @@ def push(src: str, dst: str):
 
 
 def pull(src: str, dst: str | os.PathLike[str]):
-    log(f'拉取设备文件: {src}')
+    ccglobal.log(f'拉取设备文件: {src}')
     subprocess.run(['adb', 'pull', src, os.fspath(dst)], stdout=subprocess.DEVNULL)
 
 
 def install_test_module():
-    if _OVERLAYFS:
-        push(f'{MISC_DIR}/module_template/CCTestModule-OverlayFS.zip', '/sdcard/CCTestModule.zip')
+    if config.TEST_MODULE_OVERLAYFS:
+        push(f'{ccglobal.MISC_DIR}/module_template/CCTestModule-OverlayFS.zip', '/sdcard/CCTestModule.zip')
         execute('ksud module install /sdcard/CCTestModule.zip')
         execute('rm /sdcard/CCTestModule.zip')
 
@@ -47,17 +46,17 @@ def install_test_module():
             partition_dir = f'{_OVERLAYFS_MODULE_DIR}/{partition}'
             execute(f'mkdir {partition_dir}')
             execute(f'busybox chcon --reference=/{partition} {partition_dir}')
-        log(f'已安装 CC 测试模块')
+        ccglobal.log(f'已安装 CC 测试模块')
     else:
-        push(f'{MISC_DIR}/module_template/CCTestModule-MagicMount.zip', '/sdcard/CCTestModule.zip')
+        push(f'{ccglobal.MISC_DIR}/module_template/CCTestModule-MagicMount.zip', '/sdcard/CCTestModule.zip')
         execute('ksud module install /sdcard/CCTestModule.zip')
         execute('rm /sdcard/CCTestModule.zip')
-        log(f'已安装 CC 测试模块，重启设备后生效')
+        ccglobal.log(f'已安装 CC 测试模块，重启设备后生效')
 
 
 def module_push(src_path: str, phone_path: str):
-    log(f'CCTest 文件推送: {phone_path}')
-    if _OVERLAYFS:
+    ccglobal.log(f'CCTest 文件推送: {phone_path}')
+    if config.TEST_MODULE_OVERLAYFS:
         overlay_dir_path = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(phone_path)}'
     else:
         if phone_path.startswith('/system/'):
@@ -69,8 +68,8 @@ def module_push(src_path: str, phone_path: str):
 
 
 def module_rm(phone_path: str):
-    log(f'CCTest 文件删除: {phone_path}')
-    if _OVERLAYFS:
+    ccglobal.log(f'CCTest 文件删除: {phone_path}')
+    if config.TEST_MODULE_OVERLAYFS:
         rm_path_parent = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(phone_path)}'
     else:
         if phone_path.startswith('/system/'):

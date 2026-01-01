@@ -24,7 +24,5 @@ MODIFY_DELETABLE_APK = (
     'my_stock/del-app/Calendar/Calendar.apk'
 )
 
-device: str
-version: str
-sdk: int
-kmi: str
+TEST_MODULE_OVERLAYFS = True
+OPEX_FULL_OTA_CHECK = True

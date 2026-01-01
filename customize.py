@@ -9,11 +9,11 @@ from glob import glob
 from pathlib import Path
 from zipfile import ZipFile
 
+import ccglobal
 import config
 from build.apkfile import ApkFile
 from build.smali import MethodSpecifier
 from build.xml import XmlFile
-from ccglobal import MISC_DIR, log
 
 _MODIFIED_FLAG = b'CC-Mod'
 
@@ -56,26 +56,26 @@ def rm_files():
             if len(item) == 0:
                 continue
             if os.path.exists(item):
-                log(f'删除文件: {item}')
+                ccglobal.log(f'删除文件: {item}')
                 if os.path.isdir(item):
                     shutil.rmtree(item)
                 else:
                     os.remove(item)
             else:
-                log(f'文件不存在: {item}')
+                ccglobal.log(f'文件不存在: {item}')
 
 
 def replace_installer():
-    log('替换 PUI 软件包安装程序')
+    ccglobal.log('替换 PUI 软件包安装程序')
     shutil.rmtree('system_ext/priv-app/OppoPackageInstaller')
 
     pui_dir = 'system_ext/priv-app/PUIPackageInstaller'
     os.makedirs(pui_dir)
-    shutil.copy(f'{MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
+    shutil.copy(f'{ccglobal.MISC_DIR}/PUIPackageInstaller.apk', pui_dir)
 
 
 def disable_cn_gms():
-    log('禁用国行 GMS 限制')
+    ccglobal.log('禁用国行 GMS 限制')
     xml = XmlFile('my_product/etc/permissions/oplus_google_cn_gms_features.xml')
     root = xml.get_root()
     element = root.find('feature[@name="cn.google.services"]')
@@ -90,7 +90,7 @@ def disable_cn_gms():
 
 
 def disable_activity_start_dialog():
-    log('禁用关联启动对话框')
+    ccglobal.log('禁用关联启动对话框')
     xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
     root = xml.get_root()
     element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
@@ -99,7 +99,7 @@ def disable_activity_start_dialog():
 
 
 def turn_off_flashlight_with_power_key():
-    log('启用电源键关闭手电筒')
+    ccglobal.log('启用电源键关闭手电筒')
     xml = XmlFile('system_ext/etc/permissions/com.oplus.features_config.xml')
     root = xml.get_root()
     element = root.find('oplus-feature[@name="oplus.software.powerkey_disbale_turnoff_torch"]')
@@ -112,14 +112,14 @@ def patch_oplus_services():
     apk = ApkFile('system/system/framework/oplus-services.jar')
     apk.decode()
 
-    log('禁用 ADB 安装确认')
+    ccglobal.log('禁用 ADB 安装确认')
     smali = apk.open_smali('com/android/server/pm/OplusPackageInstallInterceptManager.smali')
     specifier = MethodSpecifier()
     specifier.name = 'allowInterceptAdbInstallInInstallStage'
     specifier.parameters = 'ILandroid/content/pm/PackageInstaller$SessionParams;Ljava/io/File;Ljava/lang/String;Landroid/content/pm/IPackageInstallObserver2;'
     smali.method_return_boolean(specifier, False)
 
-    log('去除已激活 VPN 通知')
+    ccglobal.log('去除已激活 VPN 通知')
     smali = apk.open_smali('com/android/server/connectivity/VpnExtImpl.smali')
     specifier = MethodSpecifier()
     specifier.name = 'showNotification'
@@ -137,7 +137,7 @@ def patch_system_ui():
     apk = ApkFile('system_ext/priv-app/SystemUI/SystemUI.apk')
     apk.decode()
 
-    log('禁用控制中心时钟红1')
+    ccglobal.log('禁用控制中心时钟红1')
     smali = apk.open_smali('com/oplus/systemui/common/clock/OplusClockExImpl.smali')
     specifier = MethodSpecifier()
     specifier.name = 'setTextWithRedOneStyle'
@@ -174,20 +174,20 @@ def patch_system_ui():
 '''
     smali.method_replace(specifier, new_body)
 
-    log('去除开发者选项通知')
+    ccglobal.log('去除开发者选项通知')
     smali = apk.open_smali('com/oplus/systemui/statusbar/controller/SystemPromptController.smali')
     specifier = MethodSpecifier()
     specifier.name = 'updateDeveloperMode'
     smali.method_nop(specifier)
 
-    log('去除免打扰模式通知')
+    ccglobal.log('去除免打扰模式通知')
     smali = apk.open_smali('com/oplus/systemui/statusbar/notification/helper/DndAlertHelper.smali')
     specifier = MethodSpecifier()
     specifier.name = 'operateNotification'
     specifier.parameters = 'IJZ'
     smali.method_nop(specifier)
 
-    log('禁用 USB 选择弹窗')
+    ccglobal.log('禁用 USB 选择弹窗')
     smali = apk.open_smali('com/oplus/systemui/usb/UsbService.smali')
     specifier = MethodSpecifier()
     specifier.name = 'performUsbDialogAction'
@@ -215,7 +215,7 @@ def patch_launcher():
     apk = ApkFile('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
     apk.decode()
 
-    log('允许最近任务显示内存信息')
+    ccglobal.log('允许最近任务显示内存信息')
     smali = apk.open_smali('com/oplus/quickstep/memory/MemoryInfoManager.smali')
     specifier = MethodSpecifier()
     specifier.name = 'judgeWhetherAllowMemoDisplay'
@@ -234,14 +234,14 @@ def patch_launcher():
 '''
     smali.method_replace(specifier, new_body)
 
-    log('禁用最近任务自动聚焦到下一个应用')
+    ccglobal.log('禁用最近任务自动聚焦到下一个应用')
     smali = apk.open_smali('com/android/common/util/AppFeatureUtils.smali')
     specifier = MethodSpecifier()
     specifier.name = 'isSupportAutoFocusToNextPageInOverviewState'
     specifier.parameters = 'Z'
     smali.method_return_boolean(specifier, False)
 
-    log('桌面主页设置为第二页')
+    ccglobal.log('桌面主页设置为第二页')
     smali = apk.open_smali('com/android/launcher3/Workspace.smali')
     specifier = MethodSpecifier()
     specifier.name = 'initWorkspace'
@@ -270,7 +270,7 @@ def patch_theme_store():
     apk = ApkFile('my_stock/app/KeKeThemeSpace.apk')
     apk.decode()
 
-    log('去除主题商店广告')
+    ccglobal.log('去除主题商店广告')
     # Remove splash ads
     smali = apk.find_smali('"s-1"', '"getSplashScreen finish splashDto is null"', package='com/nearme/themespace/ad/self').pop()
     specifier = MethodSpecifier()
@@ -317,7 +317,7 @@ def patch_theme_store():
     specifier.name = 'getCode'
     smali.method_return_int(specifier, 0)
 
-    log('破解主题免费')
+    ccglobal.log('破解主题免费')
     smali = apk.open_smali('com/oppo/cdo/card/theme/dto/vip/VipUserDto.smali')
     specifier = MethodSpecifier()
     specifier.name = 'getVipStatus'
@@ -332,7 +332,7 @@ def patch_theme_store():
     specifier.name = 'getIsVipAvailable'
     smali.method_return_int(specifier, 1)
 
-    log('禁用主题自动恢复')
+    ccglobal.log('禁用主题自动恢复')
     smali = apk.open_smali('com/nearme/themespace/trial/ThemeTrialExpireReceiver.smali')
     specifier = MethodSpecifier()
     specifier.name = 'onReceive'
@@ -344,7 +344,7 @@ def patch_theme_store():
 
 @modified('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
 def disable_lock_screen_red_one():
-    log('禁用锁屏时钟红1')
+    ccglobal.log('禁用锁屏时钟红1')
     apk = ApkFile('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
     apk.decode()
 
@@ -359,7 +359,7 @@ def disable_lock_screen_red_one():
 
 @modified('my_stock/app/Clock/Clock.apk')
 def disable_launcher_clock_red_one():
-    log('禁用桌面时钟小部件红1')
+    ccglobal.log('禁用桌面时钟小部件红1')
     apk = ApkFile('my_stock/app/Clock/Clock.apk')
     apk.decode()
 
@@ -377,7 +377,7 @@ def disable_launcher_clock_red_one():
 
 @modified('system_ext/app/OplusCommercialEngineerMode/OplusCommercialEngineerMode.apk')
 def show_touchscreen_panel_info():
-    log('显示工程模式中的屏生产信息')
+    ccglobal.log('显示工程模式中的屏生产信息')
     apk = ApkFile('system_ext/app/OplusCommercialEngineerMode/OplusCommercialEngineerMode.apk')
     apk.refactor()
     apk.decode(False)
@@ -399,10 +399,10 @@ def show_touchscreen_panel_info():
 
 @modified('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
 def show_netmask_and_gateway():
-    log('显示 WLAN 设置中的子网掩码和网关')
+    ccglobal.log('显示 WLAN 设置中的子网掩码和网关')
     apk = ApkFile('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
     apk.decode()
-    apk.add_smali(f'{MISC_DIR}/smali/WirelessSettings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
+    apk.add_smali(f'{ccglobal.MISC_DIR}/smali/WirelessSettings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
     smali = apk.open_smali('com/oplus/wirelesssettings/wifi/detail2/WifiAddressController.smali')
     old_body = smali.find_constructor('Landroid/content/Context;Lcom/android/wifitrackerlib/WifiEntry;')
@@ -485,16 +485,16 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
 def patch_settings():
     apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
     apk.decode()
-    apk.add_smali(f'{MISC_DIR}/smali/Settings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
+    apk.add_smali(f'{ccglobal.MISC_DIR}/smali/Settings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
-    log('禁用设备名称敏感词检查')
+    ccglobal.log('禁用设备名称敏感词检查')
     smali = apk.open_smali('com/oplus/settings/feature/deviceinfo/aboutphone/PhoneNameVerifyUtil.smali')
     specifier = MethodSpecifier()
     specifier.name = 'activeNeedServerVerify'
     specifier.parameters = 'Ljava/lang/String;'
     smali.method_return_boolean(specifier, False)
 
-    log('显示应用详情中的包名和版本代码')
+    ccglobal.log('显示应用详情中的包名和版本代码')
     smali = apk.open_smali('com/oplus/settings/feature/appmanager/AppInfoFeature.smali')
     specifier = MethodSpecifier()
     specifier.name = 'setAppLabelAndIcon'
@@ -524,7 +524,7 @@ def patch_phone_manager():
     apk = ApkFile('my_stock/priv-app/PhoneManager/PhoneManager.apk')
     apk.decode()
 
-    log('去除手机管家广告')
+    ccglobal.log('去除手机管家广告')
     smali = apk.find_smali('"AdHelper.kt"', '"ro.vendor.oplus.market.name"', package='com/oplus/phonemanager/common/ad').pop()
     specifier = MethodSpecifier()
     specifier.name = 'invoke'
@@ -545,7 +545,7 @@ def patch_phone_manager():
 '''
     smali.method_replace(specifier, new_body)
 
-    log('去除手机管家中的安全事件')
+    ccglobal.log('去除手机管家中的安全事件')
     smali = apk.find_smali('MainWithMenuFragment.kt', '"com.coloros.securityguard"', package='com/oplus/phonemanager').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PRIVATE
@@ -572,14 +572,14 @@ def patch_phone_manager():
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
 
-    log('禁用应用安装监控')
+    ccglobal.log('禁用应用安装监控')
     smali = apk.open_smali('com/oplus/phonemanager/virusdetect/receiver/RealTimeMonitorReceiver.smali')
     specifier = MethodSpecifier()
     specifier.name = 'onReceive'
     specifier.parameters = 'Landroid/content/Context;Landroid/content/Intent;'
     smali.method_return_null(specifier)
 
-    log('病毒扫描永远安全')
+    ccglobal.log('病毒扫描永远安全')
     smali = apk.find_smali('"InfectedAppDao_Impl.java"', '"select * from infected_app"').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
@@ -597,7 +597,7 @@ def patch_tele_service():
     apk = ApkFile('system_ext/priv-app/TeleService/TeleService.apk')
     apk.decode()
 
-    log('显示首选网络类型设置')
+    ccglobal.log('显示首选网络类型设置')
     smali = apk.find_smali('"SIMS_OplusSimInfoActivity"', '"changeNetworkModeConfig type:"', package='com/android/simsettings/activity').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
@@ -615,7 +615,7 @@ def patch_tele_service():
 '''
     smali.method_insert_before(specifier, insert)
 
-    log('去除移动网络中的流量卡广告')
+    ccglobal.log('去除移动网络中的流量卡广告')
     smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"', package='androidx/appcompat/widget').pop()
     specifier = MethodSpecifier()
     specifier.name = 'run'
@@ -648,7 +648,7 @@ const/4 \\g<1>, 0x0
 
 @modified('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
 def remove_traffic_monitor_ads():
-    log('去除流量管理中的流量卡广告')
+    ccglobal.log('去除流量管理中的流量卡广告')
     apk = ApkFile('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
     apk.decode()
 
@@ -692,7 +692,7 @@ def remove_traffic_monitor_ads():
 
 @modified('system_ext/app/NotificationCenter/NotificationCenter.apk')
 def show_icon_for_silent_notification():
-    log('允许显示静默通知的图标')
+    ccglobal.log('允许显示静默通知的图标')
     apk = ApkFile('system_ext/app/NotificationCenter/NotificationCenter.apk')
     apk.decode()
 
@@ -720,7 +720,7 @@ initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String
 
 @modified('my_stock/app/MCS/MCS.apk')
 def remove_system_notification_ads():
-    log('去除系统通知广告')
+    ccglobal.log('去除系统通知广告')
     apk = ApkFile('my_stock/app/MCS/MCS.apk')
     apk.decode()
 
@@ -737,7 +737,7 @@ def remove_system_notification_ads():
 
 @modified('my_stock/app/Calendar/Calendar.apk')
 def remove_calendar_ads():
-    log('去除日历广告')
+    ccglobal.log('去除日历广告')
     apk = ApkFile('my_stock/app/Calendar/Calendar.apk')
     apk.decode()
 
@@ -774,7 +774,7 @@ def remove_calendar_ads():
 
 
 def patch_services():
-    log('去除系统签名检查')
+    ccglobal.log('去除系统签名检查')
     apk = ApkFile('system/system/framework/services.jar')
     apk.decode()
 
@@ -808,7 +808,7 @@ def patch_miui_services():
     apk = ApkFile('system_ext/framework/miui-services.jar')
     apk.decode()
 
-    log('允许对任意应用截屏')
+    ccglobal.log('允许对任意应用截屏')
     smali = apk.open_smali('com/android/server/wm/WindowManagerServiceImpl.smali')
     specifier = MethodSpecifier()
     specifier.name = 'notAllowCaptureDisplay'
@@ -826,14 +826,14 @@ def remove_mms_ads():
     apk = ApkFile('product/priv-app/MiuiMms/MiuiMms.apk')
     apk.decode()
 
-    log('去除短信输入框广告')
+    ccglobal.log('去除短信输入框广告')
     smali = apk.open_smali('com/miui/smsextra/ui/BottomMenu.smali')
     specifier = MethodSpecifier()
     specifier.name = 'allowMenuMode'
     specifier.return_type = 'Z'
     smali.method_return_boolean(specifier, False)
 
-    log('去除短信下方广告')
+    ccglobal.log('去除短信下方广告')
     specifier = MethodSpecifier()
     specifier.name = 'setHideButton'
     specifier.is_abstract = False
@@ -854,7 +854,7 @@ def remove_mms_ads():
 
 @modified('product/app/MIUISuperMarket/MIUISuperMarket.apk')
 def not_update_modified_app():
-    log('不检查修改过的系统应用更新')
+    ccglobal.log('不检查修改过的系统应用更新')
     apk = ApkFile('product/app/MIUISuperMarket/MIUISuperMarket.apk')
     apk.decode()
 
@@ -874,7 +874,7 @@ def not_update_modified_app():
     smali.method_replace(old_body, new_body)
 
     # If the cccm (ColorCleaner Check Modified) file exists in the internal storage root directory, ignore adding packages
-    smali.add_affiliated_smali(f'{MISC_DIR}/smali/IgnoreAppUpdate.smali', 'CcInjector.smali')
+    smali.add_affiliated_smali(f'{ccglobal.MISC_DIR}/smali/IgnoreAppUpdate.smali', 'CcInjector.smali')
     smali = apk.open_smali('com/xiaomi/market/data/CcInjector.smali')
     specifier.name = 'addModifiedPackages'
     old_body = smali.find_method(specifier)
