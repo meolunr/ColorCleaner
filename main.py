@@ -7,7 +7,6 @@ import re
 import shutil
 import subprocess
 import time
-from datetime import datetime
 from glob import glob
 from pathlib import Path, PurePath
 
@@ -15,6 +14,7 @@ import appupdate
 import ccglobal
 import config
 import customize
+import opexupdate
 import vbmeta
 from util import imgfile, template
 
@@ -234,7 +234,7 @@ def generate_script():
 
 
 def compress_zip():
-    ccglobal.log('构建刷机包')
+    ccglobal.log('构建全量包')
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
     cmd = [_7z, 'a', 'tmp.zip', 'META-INF']
     for img in os.listdir('images'):
@@ -252,10 +252,10 @@ def compress_zip():
         md5.update(f.read())
     file_name = f'CC_{ccglobal.device}_{ccglobal.version}_{md5.hexdigest()[:10]}_{ccglobal.sdk}.zip'
     os.rename('tmp.zip', file_name)
-    ccglobal.log(f'刷机包文件: {os.path.abspath(file_name).replace('\\', '/')}')
+    ccglobal.log(f'全量包文件: {os.path.abspath(file_name).replace('\\', '/')}')
 
 
-def make_module():
+def make_module(args: argparse.Namespace):
     ccglobal.log('构建系统更新模块')
     appupdate.run_on_module()
     if not os.path.isfile(ccglobal.UPDATED_APP_JSON):
@@ -273,9 +273,32 @@ def make_module():
     subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip'] + os.listdir(), check=True)
 
 
+def print_opex(args: argparse.Namespace):
+    ccglobal.log('打印 Opex 更新信息')
+    if args.file:
+        payload_extract = f'{ccglobal.LIB_DIR}/payload_extract.exe'
+        extract_erofs = f'{ccglobal.LIB_DIR}/extract.erofs.exe'
+        subprocess.run([payload_extract, '-X', 'my_manifest', '-i', args.file, '-o', 'images'], check=True)
+        subprocess.run([extract_erofs, '-X', 'build.prop', '-i', 'images/my_manifest.img'], check=True)
+
+    opex_list = opexupdate.fetch_opex()
+    if not opex_list:
+        return
+
+    print(f'+{'':-<165}+')
+    print(f'| {'Business Code':15} | {'Size':9} | {'Url':133} |')
+    print(f'+{'':-<165}+')
+    for item in opex_list:
+        business_code = item['businessCode']
+        size = item['info']['zipSize']
+        url = item['info']['autoUrl']
+        print(f'| {business_code} | {size / 1024 / 1024:>6.2f} MB | {url} |')
+    print(f'+{'':-<165}+')
+
+
 def make_rom(args: argparse.Namespace):
     ccglobal.log('构建全量包')
-    dump_payload(args.zip)
+    dump_payload(args.file)
     remove_official_recovery()
     unpack_img()
     read_rom_information()
@@ -295,31 +318,42 @@ def make_rom(args: argparse.Namespace):
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest='command', required=True)
 
-    out_parser = argparse.ArgumentParser(add_help=False)
-    out_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
-    out_parser.add_argument('-o', '--out-dir', help='输出文件夹', type=str, default='out')
-
-    rom_parser = subparsers.add_parser('rom', help='制作全量包', parents=[out_parser], add_help=False)
-    rom_parser.add_argument('zip', help='需要处理的 ROM 包')
+    rom_parser = argparse.ArgumentParser(add_help=False)
+    rom_parser.add_argument('file', help='需要处理的 ROM 包')
+    rom_parser.add_argument('-O', '--opex-files', nargs='+', help='需要处理的 Opex 包')
     rom_parser.add_argument('-k', '--kernel', help='自定义内核镜像')
     rom_parser.add_argument('--no-lkm', action='store_true', help='不安装 KernelSU LKM')
 
-    subparsers.add_parser('module', help='制作系统更新模块', parents=[out_parser], add_help=False)
+    module_parser = argparse.ArgumentParser(add_help=False)
+    module_parser.add_argument('--opex-files', nargs='+', help='需要处理的 Opex 包')
+
+    opex_parser = argparse.ArgumentParser(add_help=False)
+    opex_parser.add_argument('-f', '--file', help='需要处理的 ROM 包')
+
+    out_parser = argparse.ArgumentParser(add_help=False)
+    out_parser.add_argument('-o', '--out-dir', help='输出文件夹', default='out')
+    out_parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS, help='显示帮助信息')
+
+    subparsers.add_parser('rom', help='构建全量包', parents=[rom_parser, out_parser], add_help=False)
+    subparsers.add_parser('module', help='构建系统更新模块', parents=[module_parser, out_parser], add_help=False)
+    subparsers.add_parser('opex', help='打印 Opex 更新信息', parents=[opex_parser, out_parser], add_help=False)
     args = parser.parse_args()
 
     os.mkdir(args.out_dir)
     os.chdir(args.out_dir)
 
-    start = datetime.now()
+    start = time.time()
     match args.command:
         case 'rom':
             make_rom(args)
         case 'module':
-            make_module()
-    result = datetime.now() - start
-    ccglobal.log(f'已完成, 耗时 {int(result.seconds / 60)} 分 {result.seconds % 60} 秒')
+            make_module(args)
+        case 'opex':
+            print_opex(args)
+    result = time.time() - start
+    ccglobal.log(f'已完成, 耗时 {int(result / 60)} 分 {int(result % 60)} 秒')
 
 
 if __name__ == '__main__':

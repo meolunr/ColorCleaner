@@ -54,19 +54,6 @@ class NewApp(object):
         return old_dir
 
 
-def is_adb_connected() -> bool:
-    lines = subprocess.run(['adb', 'devices'], stdout=subprocess.PIPE).stdout.decode().strip().splitlines()
-    num = len(lines)
-    if num == 2:
-        return True
-    elif num < 2:
-        ccglobal.log('未检测到 adb 设备连接，不再进行系统应用更新')
-        return False
-    else:
-        ccglobal.log('检测到多个 adb 设备连接，不再进行系统应用更新')
-        return False
-
-
 def get_app_in_data():
     path_map = {}
 
@@ -199,7 +186,7 @@ def pull_apk_from_phone(new_apk: str, old_apk: str):
 
 
 def run_on_rom():
-    if not is_adb_connected():
+    if not adb.is_connected():
         return
     apps = fetch_updated_app()
     packages = set()
@@ -228,7 +215,7 @@ def run_on_rom():
 
 
 def run_on_module():
-    if not is_adb_connected():
+    if not adb.is_connected():
         return
     apps = {x for x in fetch_updated_app() if x.source != NewApp.Source.ROM and x.package in config.MODIFY_PACKAGE}
     packages = set()

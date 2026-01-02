@@ -1,12 +1,15 @@
 import json
+import os
 import re
 from enum import Enum
+from pathlib import Path
 from time import time
 
 import requests
 
 import ccglobal
 import config
+from util import adb
 from util import crypto
 
 
@@ -52,11 +55,11 @@ class RegionCN(Enum):
         self.opex_json_root = opex_json_root
 
 
-def create_headers(prop_file: str):
+def create_headers(prop_file: os.PathLike[str]):
     # @formatter:off
     headers: dict[str, str] = {
         'Content-Type' : 'application/json; charset=utf-8',
-        'User-Agent'   : 'Thunder',
+        'User-Agent'   : 'okhttp/5.3.2',
         'language'     : 'zh-CN',
         'infVersion'   : '1',
         'mode'         : 'client_auto',
@@ -119,7 +122,7 @@ def get_wrapped_json(keys: str, json_dict: dict):
     return get_wrapped_json(keys[index + 1:], json_dict[keys[:index]])
 
 
-def fetch_opex_update(headers: dict[str, str], request_body: dict[str, str]):
+def get_opex_update_for_current(headers: dict[str, str], request_body: dict[str, str]):
     if config.OPEX_FULL_OTA_CHECK:
         operator = RegionCN.FULL_OTA
         headers['otaVersion'] = f'{headers['otaVersion'][:-17]}0001_000000000001'
@@ -147,7 +150,7 @@ def fetch_opex_update(headers: dict[str, str], request_body: dict[str, str]):
     headers['version'] = operator.request_version
     headers['protectedKey'] = json.dumps(protected_key_dict)
 
-    response = requests.post(operator.url, data=json.dumps(request_body), headers=headers)
+    response = requests.post(operator.url, data=json.dumps(request_body), headers=headers, timeout=10)
     response_body = json.loads(response.content)
     if operator.response_body_json_root:
         response_body = json.loads(response_body[operator.response_body_json_root])
@@ -159,12 +162,20 @@ def fetch_opex_update(headers: dict[str, str], request_body: dict[str, str]):
     return get_wrapped_json(operator.opex_json_root, response_body)
 
 
-def run_on_rom():
-    headers = create_headers('build.prop')
-    request_body = create_request_body(headers)
-    opex_list = fetch_opex_update(headers, request_body)
-    print(opex_list)
-
-
-def run_on_module():
+def run():
     pass
+
+
+def fetch_opex():
+    prop_file = Path('my_manifest/build.prop')
+    if not prop_file.is_file() and adb.is_connected():
+        prop_file.parent.mkdir()
+        adb.execute('cp /my_manifest/build.prop /data/local/tmp/')
+        adb.pull('/data/local/tmp/build.prop', prop_file)
+        adb.execute(f'rm -rf /data/local/tmp/build.prop')
+    if not prop_file.is_file():
+        return None
+
+    headers = create_headers(prop_file)
+    request_body = create_request_body(headers)
+    return get_opex_update_for_current(headers, request_body)

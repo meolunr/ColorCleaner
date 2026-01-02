@@ -9,6 +9,19 @@ _MODULE_DIR = '/data/adb/modules/colorcleaner'
 _OVERLAYFS_MODULE_DIR = '/data/adb/metamodule/mnt/colorcleaner'
 
 
+def is_connected():
+    lines = subprocess.run(['adb', 'devices'], stdout=subprocess.PIPE).stdout.decode().strip().splitlines()
+    num = len(lines)
+    if num == 2:
+        return True
+    elif num < 2:
+        ccglobal.log('未检测到 adb 设备连接')
+        return False
+    else:
+        ccglobal.log('检测到多个 adb 设备连接')
+        return False
+
+
 def execute(command: str):
     return subprocess.run(['adb', 'shell', 'su', '-c', f'"{command}"']).returncode
 
