@@ -62,11 +62,11 @@ def read_rom_information():
     with open('my_manifest/build.prop', 'r', encoding='utf-8') as f:
         for line in f:
             if line.startswith('ro.product.name='):
-                ccglobal.device = ccglobal.getvalue(line)
+                ccglobal.device = ccglobal.get_prop_value(line)
             elif line.startswith('ro.build.display.id='):
-                ccglobal.version = re.match(r'.+_(\d+\.\d+\.\d+\.\d+)\(.+', ccglobal.getvalue(line)).group(1)
+                ccglobal.version = re.match(r'.+_(\d+\.\d+\.\d+\.\d+)\(.+', ccglobal.get_prop_value(line)).group(1)
             elif line.startswith('ro.build.version.release='):
-                ccglobal.sdk = ccglobal.getvalue(line)
+                ccglobal.sdk = ccglobal.get_prop_value(line)
 
     pattern = re.compile(r'.*?(\d+\.\d+).+?-(android\d+)')
     with open('boot/kernel', 'rb') as f:
@@ -250,9 +250,9 @@ def compress_zip():
     md5 = hashlib.md5()
     with open('tmp.zip', 'rb') as f:
         md5.update(f.read())
-    file_name = f'CC_{ccglobal.device}_{ccglobal.version}_{md5.hexdigest()[:10]}_{ccglobal.sdk}.zip'
-    os.rename('tmp.zip', file_name)
-    ccglobal.log(f'全量包文件: {os.path.abspath(file_name).replace('\\', '/')}')
+    filename = f'CC_{ccglobal.device}_{ccglobal.version}{ccglobal.patch_number_suffix()}_{md5.hexdigest()[:10]}.zip'
+    os.rename('tmp.zip', filename)
+    ccglobal.log(f'全量包文件: {os.path.abspath(filename).replace('\\', '/')}')
 
 
 def print_opex(args: argparse.Namespace):
@@ -294,12 +294,12 @@ def make_module(args: argparse.Namespace):
     template_dir = Path(f'{ccglobal.MISC_DIR}/module_template/Patch')
     shutil.copy(template_dir.joinpath('post-fs-data.sh'), os.getcwd())
 
-    var_version = time.strftime('%Y.%m.%d')
     version_code = time.strftime('%Y%m%d')
-    template.substitute(template_dir.joinpath('module.prop'), var_version=var_version, var_version_code=version_code)
+    version_name = f'{ccglobal.device}_{version_code}{ccglobal.patch_number_suffix()}'
+    template.substitute(template_dir.joinpath('module.prop'), var_version_code=version_code, var_version=version_name)
 
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
-    subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
+    subprocess.run([_7z, 'a', f'CC_Patch_{version_name}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
 
 
 def make_rom(args: argparse.Namespace):

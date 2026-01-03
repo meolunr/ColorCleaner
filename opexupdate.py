@@ -79,19 +79,19 @@ def create_headers(prop_file: os.PathLike[str]):
     with open(prop_file, 'r', encoding='utf-8') as f:
         for line in f:
             if line.startswith('ro.product.model='):
-                headers['model'] = ccglobal.getvalue(line)
+                headers['model'] = ccglobal.get_prop_value(line)
             elif line.startswith('ro.product.name='):
-                headers['productName'] = ccglobal.getvalue(line)
+                headers['productName'] = ccglobal.get_prop_value(line)
             elif line.startswith('ro.build.version.release='):
-                headers['androidVersion'] = f'Android{ccglobal.getvalue(line)}'
+                headers['androidVersion'] = f'Android{ccglobal.get_prop_value(line)}'
             elif line.startswith('ro.build.version.oplusrom='):
-                coloros_version = f'ColorOS{re.match(r'V(\d+\.\d+\.\d+)', ccglobal.getvalue(line)).group(1)}'
+                coloros_version = f'ColorOS{re.match(r'V(\d+\.\d+\.\d+)', ccglobal.get_prop_value(line)).group(1)}'
                 headers['osVersion'] = coloros_version
                 headers['colorOSVersion'] = coloros_version
             elif line.startswith('ro.build.display.id='):
-                headers['romVersion'] = ccglobal.getvalue(line)
+                headers['romVersion'] = ccglobal.get_prop_value(line)
             elif line.startswith('ro.build.version.ota='):
-                headers['otaVersion'] = ccglobal.getvalue(line)
+                headers['otaVersion'] = ccglobal.get_prop_value(line)
 
     return headers
 
@@ -168,12 +168,16 @@ def unpack_img(opex_files: list[str]):
     if not os.path.isdir('opex'):
         os.mkdir('opex')
 
+    ccglobal.patch_number = 0
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
     e2fs_tool = f'{ccglobal.LIB_DIR}/e2fstool.exe'
     for file in opex_files:
         subprocess.run([_7z, 'e', file, 'opex.cfg', '-oopex'], check=True, stdout=subprocess.DEVNULL)
         with open('opex/opex.cfg', 'r', encoding='utf-8') as f:
-            business_code = json.load(f)['businessCode']
+            json_dict = json.load(f)
+            business_code = json_dict['businessCode']
+            ccglobal.device = json_dict['otaVersionLimits'][0].split('_')[0]
+            ccglobal.patch_number += 1
         os.remove('opex/opex.cfg')
 
         ccglobal.log(f'提取 Opex: {business_code}')

@@ -10,6 +10,7 @@ device: str
 version: str
 sdk: int
 kmi: str
+patch_number: int
 
 
 def log(string: str):
@@ -17,5 +18,13 @@ def log(string: str):
     print(f'{now} {string}')
 
 
-def getvalue(prop: str):
+def get_prop_value(prop: str):
     return prop.rstrip().split('=')[1]
+
+
+def patch_number_suffix():
+    global patch_number
+    if patch_number > 0:
+        return f'_P{patch_number:02d}'
+    else:
+        return ''
