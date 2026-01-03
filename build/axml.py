@@ -5,23 +5,23 @@ from io import BytesIO
 
 class Chunk:
     SIZE = 8
-    _FORMAT_STRING = '<2HI'  # type, header size, size (chunk)
+    __FORMAT_STRING = '<2HI'  # type, header size, size (chunk)
 
     def __init__(self, f: BytesIO):
-        (self.type, self.header_size, self.size) = struct.unpack(self._FORMAT_STRING, f.read(self.SIZE))
+        (self.type, self.header_size, self.size) = struct.unpack(self.__FORMAT_STRING, f.read(self.SIZE))
 
 
 class StringChunk(Chunk):
     # @formatter:off
-    _FORMAT_STRING = ('<2I'  # string count, style count
-                      '2H'   # utf-8, sorted (flags)
-                      '2I')  # strings start, styles start
+    __FORMAT_STRING = ('<2I'  # string count, style count
+                      '2H'    # utf-8, sorted (flags)
+                      '2I')   # strings start, styles start
     # @formatter:on
 
     def __init__(self, f: BytesIO):
         super().__init__(f)
-        buff = f.read(struct.calcsize(self._FORMAT_STRING))
-        (self.string_count, _, self._flag_utf8, _, self.strings_start, _) = struct.unpack(self._FORMAT_STRING, buff)
+        buff = f.read(struct.calcsize(self.__FORMAT_STRING))
+        (self.string_count, _, self._flag_utf8, _, self.strings_start, _) = struct.unpack(self.__FORMAT_STRING, buff)
         self.is_utf8 = self._flag_utf8 != 0
 
         self.string_offsets = []
@@ -32,42 +32,42 @@ class StringChunk(Chunk):
 
 
 class StartNamespaceChunk(Chunk):
-    _FORMAT_STRING = ('<2I'  # line number, comment
-                      '2I')  # prefix, uri (namespace)
+    __FORMAT_STRING = ('<2I'  # line number, comment
+                       '2I')  # prefix, uri (namespace)
 
     def __init__(self, f: BytesIO):
         super().__init__(f)
-        buff = f.read(struct.calcsize(self._FORMAT_STRING))
-        (_, _, self.prefix, self.uri) = struct.unpack(self._FORMAT_STRING, buff)
+        buff = f.read(struct.calcsize(self.__FORMAT_STRING))
+        (_, _, self.prefix, self.uri) = struct.unpack(self.__FORMAT_STRING, buff)
 
 
 class StartTagChunk(Chunk):
     TYPE = 0x102
     # @formatter:off
-    _FORMAT_STRING = ('<2I'  # line number, comment
-                      '2I'   # namespace uri, name
-                      '3H'   # start, size, count (attribute)
-                      '3H')  # id index, class index, style index
+    __FORMAT_STRING = ('<2I'  # line number, comment
+                      '2I'    # namespace uri, name
+                      '3H'    # start, size, count (attribute)
+                      '3H')   # id index, class index, style index
     # @formatter:on
 
     class Attribute:
         SIZE = 20
         # @formatter:off
-        _FORMAT_STRING = ('<3I'    # namespace uri, name, raw value
-                          'H2BI')  # size, res0, data type, data
+        __FORMAT_STRING = ('<3I'    # namespace uri, name, raw value
+                          'H2BI')   # size, res0, data type, data
         # @formatter:on
         DATA_TYPE_REFERENCE = 0x01
         DATA_TYPE_STRING = 0x03
         DATA_TYPE_BOOLEAN = 0x12
 
         def __init__(self, f: BytesIO):
-            buff = f.read(struct.calcsize(self._FORMAT_STRING))
-            (self.namespace_uri, self.name, _, _, _, self.data_type, self.data) = struct.unpack(self._FORMAT_STRING, buff)
+            buff = f.read(struct.calcsize(self.__FORMAT_STRING))
+            (self.namespace_uri, self.name, _, _, _, self.data_type, self.data) = struct.unpack(self.__FORMAT_STRING, buff)
 
     def __init__(self, f: BytesIO):
         super().__init__(f)
-        buff = f.read(struct.calcsize(self._FORMAT_STRING))
-        (_, _, self.namespace_uri, self.name, _, _, self.attribute_count, _, _, _) = struct.unpack(self._FORMAT_STRING, buff)
+        buff = f.read(struct.calcsize(self.__FORMAT_STRING))
+        (_, _, self.namespace_uri, self.name, _, _, self.attribute_count, _, _, _) = struct.unpack(self.__FORMAT_STRING, buff)
 
     def read_attribute(self, f: BytesIO):
         attributes = []

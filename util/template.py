@@ -2,7 +2,7 @@ import os
 import string
 
 
-def substitute(src: str, dst: str = None, mapping: dict[str, str] = None, **kw):
+def substitute(src: str | os.PathLike[str], dst: str = None, mapping: dict[str, str] = None, **kw):
     if not dst:
         dst = os.path.basename(src)
     with open(src, 'r', encoding='utf-8') as fi:

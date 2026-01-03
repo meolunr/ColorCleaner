@@ -164,8 +164,6 @@ def get_opex_update_for_current(headers: dict[str, str], request_body: dict[str,
     return get_wrapped_json(operator.opex_json_root, response_body)
 
 
-def run():
-    pass
 def unpack_img(opex_files: list[str]):
     if not os.path.isdir('opex'):
         os.mkdir('opex')
@@ -213,6 +211,20 @@ def run_on_rom(opex_files: list[str]):
                     dst_splits[0] = item
                     break
             update_file(src, '/'.join(dst_splits))
+
+
+def run_on_module(opex_files: list[str]):
+    if not opex_files:
+        return
+    unpack_img(opex_files)
+
+    for root, _, files in os.walk('opex'):
+        for file in files:
+            if file == 'opex.cfg':
+                continue
+            src = os.path.join(root, file)
+            dst = src[21:].replace('\\', '/')
+            update_file(src, dst)
 
 
 def fetch_opex():

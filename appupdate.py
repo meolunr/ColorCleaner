@@ -221,7 +221,6 @@ def run_on_module():
     packages = set()
     remove_oat_output = io.StringIO()
     remove_data_app_output = io.StringIO()
-    package_cache_output = io.StringIO()
 
     for app in apps:
         ccglobal.log(f'更新系统应用: {app.module_old_dir}')
@@ -231,9 +230,7 @@ def run_on_module():
         packages.add(app.package)
         remove_oat_output.write(f'/{app.module_old_dir}/oat\n')
         remove_data_app_output.write(f'removeDataApp {app.package}\n')
-        package_cache_output.write(f'rm -f /data/system/package_cache/*/{apk_name}-*\n')
 
     write_record(module=packages)
     template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/customize.sh',
                         var_remove_oat=remove_oat_output.getvalue(), var_remove_data_app=remove_data_app_output.getvalue())
-    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())

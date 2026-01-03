@@ -267,15 +267,15 @@ def print_opex(args: argparse.Namespace):
     if not opex_list:
         return
 
-    print(f'+{'':-<165}+')
+    print(f'+{'':-<17}+{'':-<11}+{'':-<135}+')
     print(f'| {'Business Code':15} | {'Size':9} | {'Url':133} |')
-    print(f'+{'':-<165}+')
+    print(f'+{'':-<17}+{'':-<11}+{'':-<135}+')
     for item in opex_list:
         business_code = item['businessCode']
         size = item['info']['zipSize']
         url = item['info']['autoUrl']
         print(f'| {business_code} | {size / 1024 / 1024:>6.2f} MB | {url} |')
-    print(f'+{'':-<165}+')
+    print(f'+{'':-<17}+{'':-<11}+{'':-<135}+')
 
 
 def make_module(args: argparse.Namespace):
@@ -291,10 +291,15 @@ def make_module(args: argparse.Namespace):
         if partition != 'system' and os.path.isdir(partition):
             shutil.move(partition, f'system/{partition}')
 
+    template_dir = Path(f'{ccglobal.MISC_DIR}/module_template/Patch')
+    shutil.copy(template_dir.joinpath('post-fs-data.sh'), os.getcwd())
+
+    var_version = time.strftime('%Y.%m.%d')
     version_code = time.strftime('%Y%m%d')
-    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/module.prop', var_version=time.strftime('%Y.%m.%d'), var_version_code=version_code)
+    template.substitute(template_dir.joinpath('module.prop'), var_version=var_version, var_version_code=version_code)
+
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
-    subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip'] + os.listdir(), check=True)
+    subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
 
 
 def make_rom(args: argparse.Namespace):

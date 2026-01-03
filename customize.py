@@ -888,6 +888,7 @@ def not_update_modified_app():
     apk.build()
 
 
+# noinspection DuplicatedCode
 def run_on_rom():
     rm_files()
     replace_installer()
@@ -911,5 +912,20 @@ def run_on_rom():
     remove_calendar_ads()
 
 
+# noinspection DuplicatedCode
 def run_on_module():
-    pass
+    patch_oplus_services()
+    patch_system_ui()
+    patch_launcher()
+    patch_theme_store()
+    disable_lock_screen_red_one()
+    disable_launcher_clock_red_one()
+    show_touchscreen_panel_info()
+    show_netmask_and_gateway()
+    patch_settings()
+    patch_phone_manager()
+    patch_tele_service()
+    remove_traffic_monitor_ads()
+    show_icon_for_silent_notification()
+    remove_system_notification_ads()
+    remove_calendar_ads()
