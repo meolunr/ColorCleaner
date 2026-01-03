@@ -255,24 +255,6 @@ def compress_zip():
     ccglobal.log(f'全量包文件: {os.path.abspath(file_name).replace('\\', '/')}')
 
 
-def make_module(args: argparse.Namespace):
-    ccglobal.log('构建系统更新模块')
-    appupdate.run_on_module()
-    if not os.path.isfile(ccglobal.UPDATED_APP_JSON):
-        return
-    customize.run_on_module()
-
-    # Let the module manager app handle partition path automatically
-    for partition in config.UNPACK_PARTITIONS:
-        if partition != 'system' and os.path.isdir(partition):
-            shutil.move(partition, f'system/{partition}')
-
-    version_code = time.strftime('%Y%m%d')
-    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/module.prop', var_version=time.strftime('%Y.%m.%d'), var_version_code=version_code)
-    _7z = f'{ccglobal.LIB_DIR}/7za.exe'
-    subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip'] + os.listdir(), check=True)
-
-
 def print_opex(args: argparse.Namespace):
     ccglobal.log('打印 Opex 更新信息')
     if args.file:
@@ -296,6 +278,25 @@ def print_opex(args: argparse.Namespace):
     print(f'+{'':-<165}+')
 
 
+def make_module(args: argparse.Namespace):
+    ccglobal.log('构建系统更新模块')
+    opexupdate.run_on_module(args.opex_files)
+    appupdate.run_on_module()
+    if not os.path.isdir('product'):
+        return
+    customize.run_on_module()
+
+    # Let the module manager app handle partition path automatically
+    for partition in config.UNPACK_PARTITIONS:
+        if partition != 'system' and os.path.isdir(partition):
+            shutil.move(partition, f'system/{partition}')
+
+    version_code = time.strftime('%Y%m%d')
+    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/module.prop', var_version=time.strftime('%Y.%m.%d'), var_version_code=version_code)
+    _7z = f'{ccglobal.LIB_DIR}/7za.exe'
+    subprocess.run([_7z, 'a', f'CC_Patch_{version_code}.zip'] + os.listdir(), check=True)
+
+
 def make_rom(args: argparse.Namespace):
     ccglobal.log('构建全量包')
     dump_payload(args.file)
@@ -307,6 +308,7 @@ def make_rom(args: argparse.Namespace):
     patch_vbmeta()
     disable_avb_and_dm_verity()
     move_deletable_apk()
+    opexupdate.run_on_rom(args.opex_files)
     appupdate.run_on_rom()
     customize.run_on_rom()
     repack_img()
@@ -322,12 +324,12 @@ def main():
 
     rom_parser = argparse.ArgumentParser(add_help=False)
     rom_parser.add_argument('file', help='需要处理的 ROM 包')
-    rom_parser.add_argument('-O', '--opex-files', nargs='+', help='需要处理的 Opex 包')
+    rom_parser.add_argument('-x', '--opex-files', nargs='+', help='需要处理的 Opex 包')
     rom_parser.add_argument('-k', '--kernel', help='自定义内核镜像')
     rom_parser.add_argument('--no-lkm', action='store_true', help='不安装 KernelSU LKM')
 
     module_parser = argparse.ArgumentParser(add_help=False)
-    module_parser.add_argument('--opex-files', nargs='+', help='需要处理的 Opex 包')
+    module_parser.add_argument('-x', '--opex-files', nargs='+', help='需要处理的 Opex 包')
 
     opex_parser = argparse.ArgumentParser(add_help=False)
     opex_parser.add_argument('-f', '--file', help='需要处理的 ROM 包')

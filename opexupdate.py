@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import shutil
+import subprocess
 from enum import Enum
 from pathlib import Path
 from time import time
@@ -164,6 +166,53 @@ def get_opex_update_for_current(headers: dict[str, str], request_body: dict[str,
 
 def run():
     pass
+def unpack_img(opex_files: list[str]):
+    if not os.path.isdir('opex'):
+        os.mkdir('opex')
+
+    _7z = f'{ccglobal.LIB_DIR}/7za.exe'
+    e2fs_tool = f'{ccglobal.LIB_DIR}/e2fstool.exe'
+    for file in opex_files:
+        subprocess.run([_7z, 'e', file, 'opex.cfg', '-oopex'], check=True, stdout=subprocess.DEVNULL)
+        with open('opex/opex.cfg', 'r', encoding='utf-8') as f:
+            business_code = json.load(f)['businessCode']
+        os.remove('opex/opex.cfg')
+
+        ccglobal.log(f'提取 Opex: {business_code}')
+        subprocess.run([_7z, 'e', file, 'opex.img', '-oopex'], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([e2fs_tool, 'opex/opex.img', f'opex/{business_code}'], check=True)
+        os.remove('opex/opex.img')
+
+
+def update_file(src: str, dst: str):
+    ccglobal.log(f'更新系统文件: {dst}')
+    if os.path.isfile(dst):
+        os.remove(dst)
+    if os.path.isdir(dst):
+        shutil.rmtree(dst)
+
+    Path(dst).parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(src, dst)
+
+
+def run_on_rom(opex_files: list[str]):
+    if not opex_files:
+        return
+    unpack_img(opex_files)
+
+    for root, _, files in os.walk('opex'):
+        for file in files:
+            if file == 'opex.cfg':
+                continue
+            src = os.path.join(root, file)
+            dst_splits = src[21:].replace('\\', '/').split('/')
+
+            for item in ('my_product', 'my_stock', 'my_product/product_overlay'):
+                dst = f'{item}/{'/'.join(dst_splits[1:])}'
+                if os.path.exists(dst):
+                    dst_splits[0] = item
+                    break
+            update_file(src, '/'.join(dst_splits))
 
 
 def fetch_opex():
