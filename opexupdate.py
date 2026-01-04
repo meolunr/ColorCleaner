@@ -186,12 +186,21 @@ def unpack_img(opex_files: list[str]):
         os.remove('opex/opex.img')
 
 
+def is_cygwin_symlink(file: str):
+    with open(file, 'rb') as f:
+        if f.read(10) == b'!<symlink>':
+            return True
+    return False
+
+
 def update_file(src: str, dst: str):
     ccglobal.log(f'更新系统文件: {dst}')
     if os.path.isfile(dst):
         os.remove(dst)
     if os.path.isdir(dst):
         shutil.rmtree(dst)
+    if is_cygwin_symlink(src):
+        return
 
     Path(dst).parent.mkdir(parents=True, exist_ok=True)
     shutil.move(src, dst)
