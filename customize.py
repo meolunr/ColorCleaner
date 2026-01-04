@@ -735,6 +735,58 @@ def remove_system_notification_ads():
     apk.build()
 
 
+@modified('my_stock/priv-app/Mms/Mms.apk')
+def remove_mms_ads():
+    apk = ApkFile('my_stock/priv-app/Mms/Mms.apk')
+    apk.decode()
+    apk.add_smali(f'{ccglobal.MISC_DIR}/smali/Mms.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
+
+    ccglobal.log('去除短信输入框广告')
+    smali = apk.open_smali('com/oplus/mms/ted/smart/NumberInfoViewModel.smali')
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.parameters = ''
+    specifier.return_type = 'V'
+    specifier.keywords.add('"NumberInfoViewModel"')
+    specifier.keywords.add('"startLoadMenus:start "')
+    smali.method_nop(specifier)
+
+    ccglobal.log('去除短信下方广告')
+    smali = apk.find_smali('"SmsEntityUtil.kt"').pop()
+    specifier = MethodSpecifier()
+    specifier.Access = MethodSpecifier.Access.PRIVATE
+    specifier.is_static = True
+    specifier.is_final = True
+    specifier.parameters = 'Lorg/json/JSONObject;'
+    specifier.return_type = 'Lkotlin/Pair;'
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+(    invoke-virtual {p0, [v|p]\d+}, Lorg/json/JSONArray;->getJSONObject\(I\)Lorg/json/JSONObject;
+(?:.|\n)*?
+    move-result-object ([v|p]\d+))
+((?:.|\n)*?
+    const-string ([v|p]\d+), "channel"
+(?:.|\n)*?
+    (:cond_\d+)
+    :goto_\d+
+    add-int/lit8 [v|p]\d+, [v|p]\d+, 0x1)
+'''
+    repl = r'''
+\g<1>
+    invoke-static {\g<2>}, Lcom/meolunr/colorcleaner/CcInjector;->shouldFilterButton(Lorg/json/JSONObject;)Z
+
+    move-result \g<4>
+
+    if-nez \g<4>, \g<5>
+\g<3>
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
+    apk.build()
+
+
 @modified('my_stock/app/Calendar/Calendar.apk')
 def remove_calendar_ads():
     ccglobal.log('去除日历广告')
@@ -821,37 +873,6 @@ def patch_miui_services():
             os.remove(file)
 
 
-@modified('product/priv-app/MiuiMms/MiuiMms.apk')
-def remove_mms_ads():
-    apk = ApkFile('product/priv-app/MiuiMms/MiuiMms.apk')
-    apk.decode()
-
-    ccglobal.log('去除短信输入框广告')
-    smali = apk.open_smali('com/miui/smsextra/ui/BottomMenu.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'allowMenuMode'
-    specifier.return_type = 'Z'
-    smali.method_return_boolean(specifier, False)
-
-    ccglobal.log('去除短信下方广告')
-    specifier = MethodSpecifier()
-    specifier.name = 'setHideButton'
-    specifier.is_abstract = False
-    pattern = '''\
-    iput-boolean ([v|p]\\d), p0, L.+?;->.+?:Z
-'''
-    repl = '''\
-    const/4 \\g<1>, 0x1
-
-\\g<0>'''
-    for smali in apk.find_smali('final setHideButton'):
-        old_body = smali.find_method(specifier)
-        new_body = re.sub(pattern, repl, old_body)
-        smali.method_replace(old_body, new_body)
-
-    apk.build()
-
-
 @modified('product/app/MIUISuperMarket/MIUISuperMarket.apk')
 def not_update_modified_app():
     ccglobal.log('不检查修改过的系统应用更新')
@@ -908,6 +929,7 @@ def run_on_rom():
     remove_traffic_monitor_ads()
     show_icon_for_silent_notification()
     remove_system_notification_ads()
+    remove_mms_ads()
     remove_calendar_ads()
 
 
