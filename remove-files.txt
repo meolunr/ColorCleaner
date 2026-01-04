@@ -22,13 +22,16 @@ system_ext/app/CrashBox
 system_ext/app/HealthService
 system_ext/app/LFEHer
 system_ext/app/LogKit
+system_ext/app/OTA
 system_ext/app/OTrace
 system_ext/app/Olc
 system_ext/app/OplusQualityProtect
 system_ext/app/OwkService
 system_ext/app/PrintSpooler
 system_ext/app/RsmcSatelliteAuth
+system_ext/app/SAUHelper
 system_ext/app/Stk
+system_ext/app/SystemAppUpdateService
 system_ext/app/TTSatelliteAuth
 system_ext/app/WapiCertManage
 system_ext/priv-app/AvatarPicker
@@ -78,6 +81,7 @@ my_stock/app/OplusOperationManual
 my_stock/app/OplusSecurityKeyboard
 my_stock/app/OVoiceManagerSkillService
 my_stock/app/RegService
+my_stock/app/RomUpdate
 my_stock/app/SceneMode
 my_stock/app/SecurePay
 my_stock/app/SecurityGuard
@@ -115,9 +119,3 @@ my_stock/del-app
 # 小布指令
 # 逍遥游
 # 银联可信服务安全组件
-
-# 系统更新相关
-# /my_stock/app/RomUpdate
-# /system_ext/app/OTA
-# /system_ext/app/SystemAppUpdateService
-# /system_ext/app/SAUHelper
