@@ -107,7 +107,29 @@ def turn_off_flashlight_with_power_key():
     xml.commit()
 
 
-@modified('system/system/framework/oplus-services.jar')
+def remove_signature_verification():
+    ccglobal.log('去除 Android 13+ 签名验证')
+    apk = ApkFile('system/system/framework/services.jar')
+    apk.decode()
+
+    specifier = MethodSpecifier()
+    specifier.keywords.add('->getMinimumSignatureSchemeVersionForTargetSdk(I)I')
+    pattern = r'''
+    invoke-static {.+?}, Landroid/util/apk/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk\(I\)I
+
+    move-result ([v|p]\d+)
+'''
+    repl = r'''
+    const/4 \g<1>, 0x1
+'''
+    for smali in apk.find_smali('->getMinimumSignatureSchemeVersionForTargetSdk(I)I'):
+        old_body = smali.find_method(specifier)
+        new_body = re.sub(pattern, repl, old_body)
+        smali.method_replace(old_body, new_body)
+
+    apk.build()
+
+
 def patch_oplus_services():
     apk = ApkFile('system/system/framework/oplus-services.jar')
     apk.decode()
@@ -339,6 +361,7 @@ def patch_theme_store():
     specifier.parameters = 'Landroid/content/Context;Landroid/content/Intent;'
     smali.method_return_null(specifier)
 
+    input('enter')
     apk.build()
 
 
@@ -825,54 +848,6 @@ def remove_calendar_ads():
     apk.build()
 
 
-def patch_services():
-    ccglobal.log('去除系统签名检查')
-    apk = ApkFile('system/system/framework/services.jar')
-    apk.decode()
-
-    specifier = MethodSpecifier()
-    specifier.keywords.add('getMinimumSignatureSchemeVersionForTargetSdk')
-    pattern = '''\
-    invoke-static .+?, Landroid/util/apk/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk\\(I\\)I
-
-    move-result ([v|p]\\d)
-'''
-    repl = '''\
-    const/4 \\g<1>, 0x0
-'''
-    for smali in apk.find_smali('getMinimumSignatureSchemeVersionForTargetSdk'):
-        old_body = smali.find_method(specifier)
-        new_body = re.sub(pattern, repl, old_body)
-        smali.method_replace(old_body, new_body)
-
-    # Remove the black screen when capturing display
-    smali = apk.open_smali('com/android/server/wm/WindowState.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'isSecureLocked'
-    smali.method_return_boolean(specifier, False)
-
-    apk.build()
-    for file in glob('system/system/framework/oat/arm64/services.*'):
-        os.remove(file)
-
-
-def patch_miui_services():
-    apk = ApkFile('system_ext/framework/miui-services.jar')
-    apk.decode()
-
-    ccglobal.log('允许对任意应用截屏')
-    smali = apk.open_smali('com/android/server/wm/WindowManagerServiceImpl.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'notAllowCaptureDisplay'
-    specifier.parameters = 'Lcom/android/server/wm/RootWindowContainer;I'
-    smali.method_return_boolean(specifier, False)
-
-    apk.build()
-    for file in glob('system_ext/framework/**/miui-services.*', recursive=True):
-        if not os.path.samefile(apk.file, file):
-            os.remove(file)
-
-
 @modified('product/app/MIUISuperMarket/MIUISuperMarket.apk')
 def not_update_modified_app():
     ccglobal.log('不检查修改过的系统应用更新')
@@ -915,6 +890,7 @@ def run_on_rom():
     disable_cn_gms()
     disable_activity_start_dialog()
     turn_off_flashlight_with_power_key()
+    remove_signature_verification()
     patch_oplus_services()
     patch_system_ui()
     patch_launcher()
