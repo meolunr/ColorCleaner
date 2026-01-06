@@ -128,6 +128,10 @@ def remove_signature_verification():
         smali.method_replace(old_body, new_body)
 
     apk.build()
+    os.remove(f'{apk.file}.fsv_meta')
+    for file in glob('system/system/framework/oat/arm64/services.*'):
+        if not os.path.samefile(apk.file, file):
+            os.remove(file)
 
 
 def patch_oplus_services():
@@ -149,7 +153,8 @@ def patch_oplus_services():
     smali.method_nop(specifier)
 
     apk.build()
-    for file in glob('system/system/framework/**/oplus-services.*', recursive=True):
+    os.remove(f'{apk.file}.fsv_meta')
+    for file in glob('system/system/framework/oat/arm64/oplus-services.*'):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 
@@ -287,9 +292,11 @@ def patch_launcher():
     apk.build()
 
 
-@modified('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
+# @modified('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
+@modified('KeKeThemeSpace.apk')
 def patch_theme_store():
-    apk = ApkFile('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
+    # apk = ApkFile('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
+    apk = ApkFile('KeKeThemeSpace.apk')
     apk.decode()
 
     ccglobal.log('去除主题商店广告')
@@ -361,7 +368,6 @@ def patch_theme_store():
     specifier.parameters = 'Landroid/content/Context;Landroid/content/Intent;'
     smali.method_return_null(specifier)
 
-    input('enter')
     apk.build()
 
 
