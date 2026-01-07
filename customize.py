@@ -108,28 +108,40 @@ def turn_off_flashlight_with_power_key():
 
 
 def remove_signature_verification():
-    ccglobal.log('去除 Android 13+ 签名验证')
-    apk = ApkFile('system/system/framework/services.jar')
+    ccglobal.log('去除 V3 签名完整性验证')
+    apk = ApkFile('system/system/framework/framework.jar')
     apk.decode()
 
+    smali = apk.open_smali('android/util/apk/ApkSigningBlockUtils.smali')
     specifier = MethodSpecifier()
-    specifier.keywords.add('->getMinimumSignatureSchemeVersionForTargetSdk(I)I')
-    pattern = r'''
-    invoke-static {.+?}, Landroid/util/apk/ApkSignatureVerifier;->getMinimumSignatureSchemeVersionForTargetSdk\(I\)I
+    specifier.name = 'parseVerityDigestAndVerifySourceLength'
+    specifier.parameters = '[BJLandroid/util/apk/SignatureInfo;'
+    specifier.return_type = '[B'
+    new_body = '''\
+.method static blacklist parseVerityDigestAndVerifySourceLength([BJLandroid/util/apk/SignatureInfo;)[B
+    .locals 2
 
-    move-result ([v|p]\d+)
+    const/4 v0, 0x0
+
+    const/16 v1, 0x20
+
+    invoke-static {p0, v0, v1}, Ljava/util/Arrays;->copyOfRange([BII)[B
+
+    move-result-object v0
+
+    return-object v0
+.end method
 '''
-    repl = r'''
-    const/4 \g<1>, 0x1
-'''
-    for smali in apk.find_smali('->getMinimumSignatureSchemeVersionForTargetSdk(I)I'):
-        old_body = smali.find_method(specifier)
-        new_body = re.sub(pattern, repl, old_body)
-        smali.method_replace(old_body, new_body)
+    smali.method_replace(specifier, new_body)
+
+    specifier = MethodSpecifier()
+    specifier.name = 'verifyIntegrityForVerityBasedAlgorithm'
+    specifier.parameters = '[BLjava/io/RandomAccessFile;Landroid/util/apk/SignatureInfo;'
+    smali.method_nop(specifier)
 
     apk.build()
     os.remove(f'{apk.file}.fsv_meta')
-    for file in glob('system/system/framework/oat/arm64/services.*'):
+    for file in glob('system/system/framework/**/boot-framework.*', recursive=True):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 
