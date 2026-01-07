@@ -3,7 +3,6 @@ import io
 import os
 import re
 import shutil
-import string
 import sys
 from glob import glob
 from pathlib import Path
@@ -14,6 +13,7 @@ import config
 from build.apkfile import ApkFile
 from build.smali import MethodSpecifier
 from build.xml import XmlFile
+from util import template
 
 _MODIFIED_FLAG = b'CC-Mod'
 
@@ -304,11 +304,9 @@ def patch_launcher():
     apk.build()
 
 
-# @modified('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
-@modified('KeKeThemeSpace.apk')
+@modified('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
 def patch_theme_store():
-    # apk = ApkFile('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
-    apk = ApkFile('KeKeThemeSpace.apk')
+    apk = ApkFile('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
     apk.decode()
 
     ccglobal.log('去除主题商店广告')
@@ -866,38 +864,75 @@ def remove_calendar_ads():
     apk.build()
 
 
-@modified('product/app/MIUISuperMarket/MIUISuperMarket.apk')
-def not_update_modified_app():
-    ccglobal.log('不检查修改过的系统应用更新')
-    apk = ApkFile('product/app/MIUISuperMarket/MIUISuperMarket.apk')
+@modified('my_stock/priv-app/KeKeMarket/KeKeMarket.apk')
+def ignore_modified_app_update():
+    ccglobal.log('忽略修改过的系统应用更新')
+    apk = ApkFile('my_stock/priv-app/KeKeMarket/KeKeMarket.apk')
     apk.decode()
+    apk.add_smali(f'{ccglobal.MISC_DIR}/smali/KeKeMarket.smali', 'com/meolunr/colorcleaner/Template.smali')
 
-    smali = apk.open_smali('com/xiaomi/market/data/LocalAppManager.smali')
+    smali = apk.find_smali('"AppMd5Util"').pop()
     specifier = MethodSpecifier()
-    specifier.name = 'getUpdateInfoFromServer'
-    old_body = smali.find_method(specifier)
-    pattern = '''\
-    invoke-direct/range {.+?}, Lcom/xiaomi/market/data/LocalAppManager;->loadInvalidSystemPackageList\\(\\)Ljava/util/List;
+    specifier.Access = MethodSpecifier.Access.PUBLIC
+    specifier.is_static = True
+    specifier.parameters = ''
+    specifier.return_type = 'Ljava/util/List;'
+    specifier.keywords.add('->getInstalledPackagesCaches()Ljava/util/List;')
 
-    move-result-object ([v|p]\\d+?)
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    invoke-interface {[v|p]\d+}, \S+;->getInstalledPackagesCaches\(\)Ljava/util/List;
+(?:.|\n)*?
+    move-result-object ([v|p]\d+)
 '''
-    repl = '''\\g<0>
-    invoke-static {\\g<1>}, Lcom/xiaomi/market/data/CcInjector;->addModifiedPackages(Ljava/util/List;)V
+    repl = r'''\g<0>
+    invoke-static {\g<1>}, Lcom/meolunr/colorcleaner/CcInjector;->filterModifiedPackage(Ljava/util/List;)V
 '''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
 
-    # If the cccm (ColorCleaner Check Modified) file exists in the internal storage root directory, ignore adding packages
-    smali.add_affiliated_smali(f'{ccglobal.MISC_DIR}/smali/IgnoreAppUpdate.smali', 'CcInjector.smali')
-    smali = apk.open_smali('com/xiaomi/market/data/CcInjector.smali')
-    specifier.name = 'addModifiedPackages'
-    old_body = smali.find_method(specifier)
+    template_dict = {}
     output = io.StringIO()
     for package in config.MODIFY_PACKAGE:
-        output.write(f'    const-string v1, "{package}"\n\n')
-        output.write('    invoke-interface {p0, v1}, Ljava/util/List;->add(Ljava/lang/Object;)Z\n\n')
-    new_body = string.Template(old_body).safe_substitute(var_modify_package=output.getvalue())
-    smali.method_replace(old_body, new_body)
+        output.write(f'const-string v1, "{package}"\n\n')
+        output.write('invoke-interface {v0, v1}, Ljava/util/List;->add(Ljava/lang/Object;)Z\n\n')
+    template_dict['var_modified_package'] = output.getvalue()
+
+    pattern = r'''
+        value = {
+            "\(\)",
+            "Ljava/util/List<",
+            "(L\S+;)",
+            ">;"
+        }
+'''
+    bean_class = re.search(pattern, new_body).group(1)
+    template_dict['var_bean_class'] = bean_class
+
+    bean_smali = apk.open_smali(f'{bean_class[1:-1]}.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'toString'
+    specifier.parameters = ''
+    body = bean_smali.find_method(specifier)
+    pattern = f'''\
+    const-string [v|p]\\d+, "CacheAppInfo{{packageName=\\\\'"
+(?:.|\\n)*?
+    iget-object [v|p]\\d+, p0, ({bean_class}->\\S+:Ljava/lang/String;)
+'''
+    field = re.search(pattern, body).group(1)
+
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.parameters = ''
+    specifier.return_type = 'Ljava/lang/String;'
+    specifier.keywords.add(f'iget-object v0, p0, {field}')
+    body = bean_smali.find_method(specifier)
+    bean_package_name_method = re.search(r'.method public (\S+)\n', body).group(1)
+    template_dict['var_bean_package_name_method'] = bean_package_name_method
+
+    template_smali_path = apk.open_smali('com/meolunr/colorcleaner/Template.smali').file
+    template.substitute(template_smali_path, f'{os.path.dirname(template_smali_path)}/CcInjector.smali', mapping=template_dict)
+    os.remove(template_smali_path)
 
     apk.build()
 
@@ -925,6 +960,7 @@ def run_on_rom():
     remove_system_notification_ads()
     remove_mms_ads()
     remove_calendar_ads()
+    ignore_modified_app_update()
 
 
 def run_on_module():

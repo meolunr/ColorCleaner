@@ -66,14 +66,11 @@
 
     return v2
 
-    .end local v5
     :cond_1
     add-int/lit8 v4, v4, 0x1
 
     goto :goto_0
 
-    .end local v3
-    .end local v4
     :cond_2
     const/4 v2, 0x0
 

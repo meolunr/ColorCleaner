@@ -16,7 +16,8 @@ MODIFY_PACKAGE = (
     'com.oplus.trafficmonitor',
     'com.oplus.notificationmanager',
     'com.heytap.mcs',
-    'com.coloros.calendar'
+    'com.coloros.calendar',
+    'com.heytap.market'
 )
 MODIFY_DELETABLE_APK = (
     'my_stock/del-app/KeKeThemeSpace/KeKeThemeSpace.apk',
