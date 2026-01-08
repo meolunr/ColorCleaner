@@ -918,6 +918,95 @@ def patch_weather():
 '''
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
+
+    ccglobal.log('禁用天气详情跳转浏览器')
+    start_web_activity_code = '''
+    const/4 v0, 0x1
+
+    const-string v1, ""
+
+    invoke-static {{{context}, {url}, v0, v1, v0}}, Lcom/oplus/weather/plugin/webview/BrowserCommonUtils;->startWeatherWebActivity(Landroid/content/Context;Ljava/lang/String;ZLjava/lang/String;Z)V\
+'''
+
+    smali = apk.open_smali('com/oplus/weather/utils/SecondaryPageUtil.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'startJumpToBrowser'
+    specifier.parameters = 'Landroid/content/Context;Ljava/lang/String;Z'
+    new_body = f'''\
+.method public static final startJumpToBrowser(Landroid/content/Context;Ljava/lang/String;Z)V
+    .locals 2
+    {start_web_activity_code.format(context='p0', url='p1')}
+
+    return-void
+.end method
+'''
+    smali.method_replace(specifier, new_body)
+
+    specifier = MethodSpecifier()
+    specifier.name = 'startJumpToBrowser'
+    specifier.parameters = 'Landroid/content/Context;Ljava/lang/String;ZZZZZLjava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function0;'
+    new_body = f'''\
+.method public static final startJumpToBrowser(Landroid/content/Context;Ljava/lang/String;ZZZZZLjava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function0;)V
+    .locals 2
+    {start_web_activity_code.format(context='p0', url='p1')}
+
+    invoke-interface/range {{p9 .. p9}}, Lkotlin/jvm/functions/Function0;->invoke()Ljava/lang/Object;
+
+    return-void
+.end method
+'''
+    smali.method_replace(specifier, new_body)
+
+    smali = apk.open_smali('com/oplus/weather/utils/LocalUtils.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'startBrowserForUrl'
+    specifier.parameters = 'ILandroid/content/Context;Ljava/lang/String;Ljava/lang/String;ZZZZ'
+    new_body = f'''\
+.method public static startBrowserForUrl(ILandroid/content/Context;Ljava/lang/String;Ljava/lang/String;ZZZZ)V
+    .locals 2
+    {start_web_activity_code.format(context='p1', url='p2')}
+
+    return-void
+.end method
+'''
+    smali.method_replace(specifier, new_body)
+
+    specifier = MethodSpecifier()
+    specifier.name = 'jumpToBrowser'
+    specifier.parameters = 'Landroid/content/Context;ILjava/lang/String;Ljava/lang/String;ZZ'
+    new_body = f'''\
+.method public static jumpToBrowser(Landroid/content/Context;ILjava/lang/String;Ljava/lang/String;ZZ)V
+    .locals 2
+    {start_web_activity_code.format(context='p0', url='p2')}
+
+    return-void
+.end method
+'''
+    smali.method_replace(specifier, new_body)
+
+    pattern = r'''
+    sget-boolean ([v|p]\d+), Lcom/oplus/weather/plugin/feature/AppFeature;->isExpVersion:Z
+'''
+    repl = r'''
+    const/4 \g<1>, 0x1
+'''
+
+    smali = apk.find_smali('WeatherWebActivity$mWebViewClient', 'shouldOverrideUrlLoading', package='com/oplus/weather/plugin/webview').pop()
+    specifier = MethodSpecifier()
+    specifier.name = 'shouldOverrideUrlLoading'
+    specifier.parameters = 'Landroid/webkit/WebView;Landroid/webkit/WebResourceRequest;'
+    old_body = smali.find_method(specifier)
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
+    smali = apk.open_smali('com/oplus/weather/shortcut/WeatherShortcutManager.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'updateShortcutIntent'
+    specifier.parameters = 'ZLkotlin/coroutines/Continuation;'
+    old_body = smali.find_method(specifier)
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
     apk.build()
 
 
