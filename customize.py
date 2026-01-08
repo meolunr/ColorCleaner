@@ -864,6 +864,26 @@ def remove_calendar_ads():
     apk.build()
 
 
+@modified('my_stock/app/OppoWeather2/OppoWeather2.apk')
+def patch_weather():
+    apk = ApkFile('my_stock/app/OppoWeather2/OppoWeather2.apk')
+    apk.decode()
+
+    ccglobal.log('去除天气广告')
+    smali = apk.open_smali('com/oplus/weather/uiconfig/UIConfigManager.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'getHotRecommendSwitch'
+    specifier.parameters = 'Landroid/content/Context;'
+    smali.method_return_boolean(specifier, False)
+
+    specifier = MethodSpecifier()
+    specifier.name = 'getWonderfulRecommendSwitch'
+    specifier.parameters = 'Landroid/content/Context;'
+    smali.method_return_boolean(specifier, False)
+
+    apk.build()
+
+
 @modified('my_stock/priv-app/KeKeMarket/KeKeMarket.apk')
 def ignore_modified_app_update():
     ccglobal.log('忽略修改过的系统应用更新')
@@ -960,6 +980,7 @@ def run_on_rom():
     remove_system_notification_ads()
     remove_mms_ads()
     remove_calendar_ads()
+    patch_weather()
     ignore_modified_app_update()
 
 

@@ -17,12 +17,14 @@ MODIFY_PACKAGE = (
     'com.oplus.notificationmanager',
     'com.heytap.mcs',
     'com.coloros.calendar',
+    'com.coloros.weather2',
     'com.heytap.market'
 )
 MODIFY_DELETABLE_APK = (
     'my_stock/del-app/KeKeThemeSpace/KeKeThemeSpace.apk',
     'my_stock/del-app/Clock/Clock.apk',
-    'my_stock/del-app/Calendar/Calendar.apk'
+    'my_stock/del-app/Calendar/Calendar.apk',
+    'my_stock/del-app/OppoWeather2/OppoWeather2.apk'
 )
 
 TEST_MODULE_OVERLAYFS = True

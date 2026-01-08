@@ -68,9 +68,6 @@ def create_headers(prop_file: os.PathLike[str]):
         'nvCarrier'    : '10010111',
         'pipelineKey'  : 'ALLNET',
         'operator'     : 'ALLNET',
-        'brand'        : 'OnePlus',
-        'brandSota'    : 'OnePlus',
-        'osType'       : 'domestic_OnePlus',
         'deviceId'     : '14BDCD6FD64180AF5E7791DF91B6AF8E9A3E7BC844997EB8C29252706DF97CA5',
         'queryMode'    : '0'
     }
@@ -92,6 +89,12 @@ def create_headers(prop_file: os.PathLike[str]):
                 headers['romVersion'] = ccglobal.get_prop_value(line)
             elif line.startswith('ro.build.version.ota='):
                 headers['otaVersion'] = ccglobal.get_prop_value(line)
+            elif line.startswith('ro.product.vendor.brand='):
+                brand = ccglobal.get_prop_value(line)
+                headers['brand'] = brand
+                headers['brandSota'] = brand
+            elif line.startswith('ro.oplus.image.my_stock.type='):
+                headers['osType'] = ccglobal.get_prop_value(line)
 
     return headers
 
