@@ -881,6 +881,43 @@ def patch_weather():
     specifier.parameters = 'Landroid/content/Context;'
     smali.method_return_boolean(specifier, False)
 
+    ccglobal.log('禁用未来 15 日天气展开')
+    specifier = MethodSpecifier()
+    specifier.name = 'isAllow15DayExpand'
+    specifier.parameters = 'Lcom/oplus/weather/main/model/WeatherWrapper;'
+    smali.method_return_boolean(specifier, False)
+
+    ccglobal.log('逐小时天气跳转折线图')
+    smali = apk.open_smali('com/oplus/weather/main/view/itemview/HourlyChildWeatherItem.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'onHourlyItemClick'
+    specifier.parameters = 'Landroid/view/View;'
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    iget-wide ([v|p]\d+), p0, Lcom/oplus/weather/main/view/itemview/HourlyChildWeatherItem;->time:J
+'''
+    repl = r'''
+    const-wide/16 \g<1>, -0x1
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
+    ccglobal.log('未来 15 日天气跳转折线图')
+    smali = apk.open_smali('com/oplus/weather/main/view/itemview/FutureDayWeatherItemCreator.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'parseFutureData'
+    specifier.parameters = 'Landroid/content/Context;Lcom/oplus/weather/main/model/WeatherWrapper;Z'
+
+    old_body = smali.find_method(specifier)
+    pattern = r'''
+    invoke-virtual {([v|p]\d+)}, Lcom/oplus/weather/service/provider/model/WeatherInfoModel;->getMDailyDetailsAdLink\(\)Ljava/lang/String;
+'''
+    repl = r'''
+    invoke-virtual {\g<1>}, Lcom/oplus/weather/service/provider/model/WeatherInfoModel;->getMFutureFifteenAdLink()Ljava/lang/String;
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
     apk.build()
 
 
