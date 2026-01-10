@@ -246,6 +246,30 @@ def patch_system_ui():
 '''
     smali.method_insert_before(specifier, insert)
 
+    ccglobal.log('禁用自动进入超级省电模式')
+    smali = apk.open_smali('com/oplus/systemui/statusbar/notification/power/supersave/OplusSuperSaveControllerImpl.smali')
+    old_body = smali.find_constructor('Landroid/content/Context;Lcom/android/systemui/settings/UserTracker;Ljava/util/concurrent/Executor;\
+Lcom/android/systemui/statusbar/policy/KeyguardStateController;Lcom/oplus/systemui/statusbar/notification/power/OplusPowerUISoundUtil;\
+Lcom/android/systemui/statusbar/policy/DeviceProvisionedController;')
+    pattern = r'''
+    const-string ([v|p]\d+), "persist.vendor.battery_value_min"
+(?:.|\n)*?
+    invoke-static {[v|p]\d+, [v|p]\d+}, Landroid/os/SystemProperties;->getInt\(Ljava/lang/String;I\)I
+(?:.|\n)*?
+    move-result ([v|p]\d+)
+'''
+    repl = r'''
+    const-string \g<1>, "persist.vendor.battery_value_min"
+    
+    const/4 \g<2>, -0x1
+
+    invoke-static {\g<1>, \g<2>}, Landroid/os/SystemProperties;->getInt(Ljava/lang/String;I)I
+
+    move-result \g<2>
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
     apk.build()
 
 
@@ -1073,9 +1097,10 @@ def ignore_modified_app_update():
     specifier.return_type = 'Ljava/lang/String;'
     specifier.keywords.add(f'iget-object v0, p0, {field}')
     body = bean_smali.find_method(specifier)
-    bean_package_name_method = re.search(r'.method public (\S+)\n', body).group(1)
+    bean_package_name_method = re.search(r'\.method public (\S+)\n', body).group(1)
     template_dict['var_bean_package_name_method'] = bean_package_name_method
 
+    # If the cccm (ColorCleaner Check Modified) file exists in the root directory of internal storage, skip package filtering
     template_smali_path = apk.open_smali('com/meolunr/colorcleaner/Template.smali').file
     template.substitute(template_smali_path, f'{os.path.dirname(template_smali_path)}/CcInjector.smali', mapping=template_dict)
     os.remove(template_smali_path)

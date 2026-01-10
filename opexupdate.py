@@ -200,7 +200,7 @@ def update_file(src: str, dst: str):
     ccglobal.log(f'更新系统文件: {dst}')
     if os.path.isfile(dst):
         os.remove(dst)
-    if os.path.isdir(dst):
+    elif os.path.isdir(dst):
         shutil.rmtree(dst)
     if is_cygwin_symlink(src):
         return
