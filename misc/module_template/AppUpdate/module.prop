@@ -1,6 +1,0 @@
-id=hcappupdate
-name=HC系统应用更新
-version=$var_version
-versionCode=$var_version_code
-author=Meolunr
-description=HyperCleaner系统应用更新模块

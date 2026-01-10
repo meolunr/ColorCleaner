@@ -9,7 +9,6 @@ system/system/app/Stk
 system/system/app/Traceur
 system/system/app/WallpaperBackup
 system/system/app/WapiCertManage
-system/system/priv-app/AvatarPicker
 system/system/priv-app/BackupRestoreConfirmation
 system/system/priv-app/BlockedNumberProvider
 system/system/priv-app/BuiltInPrintService
@@ -24,7 +23,6 @@ system/system/priv-app/ManagedProvisioning
 system/system/priv-app/MusicFX
 system/system/priv-app/ONS
 system/system/priv-app/SharedStorageBackup
-system/system/priv-app/StatementService
 system/system/priv-app/UserDictionaryProvider
 system_ext/app/DeviceInfo
 system_ext/app/MiSightService
@@ -32,20 +30,22 @@ system_ext/app/MiuiDaemon
 system_ext/app/MiuiPrintSpooler
 system_ext/app/ModemTestBox
 system_ext/app/WAPPushManager
+system_ext/priv-app/AvatarPicker
 system_ext/priv-app/EmergencyInfo
 system_ext/priv-app/GoogleServicesFramework
+system_ext/priv-app/StatementService
 product/app/AiasstVision
 product/app/CameraTools_beta
 product/app/CatchLog
 product/app/com.xiaomi.macro
 product/app/ConferenceDialer
-product/app/ContentCatcherOS2
+product/app/ContentCatcherOS3
 product/app/DeviceInfoQR
 product/app/GoogleLocationHistory
 product/app/GooglePrintRecommendationService
 product/app/HybridPlatform
 product/app/mi_connect_service
-product/app/MiBugReportOS2
+product/app/MiBugReportOS3
 product/app/MIUIAccessibility
 product/app/MIUIAiasstService
 product/app/MIUIFileExplorer
@@ -72,12 +72,11 @@ product/priv-app/ConfigUpdater
 product/priv-app/GoogleOneTimeInitializer
 product/priv-app/GooglePlayServicesUpdater
 product/priv-app/MiGameCenterSDKService
-product/priv-app/MirrorOS2
+product/priv-app/MirrorOS3
 product/priv-app/MiuiBarrage
 product/priv-app/MIUIBrowser
 product/priv-app/MIUIContentExtension
-product/priv-app/MIUIPersonalAssistantPhoneOS2NoBeta
-product/priv-app/MIUIPersonalAssistantPhoneMIUI15NEW  # K70 Pro
+product/priv-app/MIUIPersonalAssistantPhoneOS3
 product/priv-app/MIUIQuickSearchBox
 product/priv-app/RegService
 product/priv-app/SettingsIntelligence

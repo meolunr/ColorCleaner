@@ -1,5 +1,6 @@
 SUPER_SIZE = 9126805504
-SUPER_PARTITIONS = ('mi_ext', 'odm', 'product', 'system', 'system_dlkm', 'system_ext', 'vendor', 'vendor_dlkm')
+SUPER_PARTITIONS = ('system', 'system_ext', 'system_dlkm', 'product', 'vendor', 'vendor_dlkm', 'odm', 'mi_ext')
+UNPACK_PARTITIONS = ('boot', 'system', 'system_ext', 'product', 'vendor')
 MODIFY_PACKAGE = (
     'com.miui.packageinstaller',
     'com.android.thememanager',
@@ -12,7 +13,4 @@ MODIFY_PACKAGE = (
     'com.xiaomi.market'
 )
 
-unpack_partitions = {'product', 'system', 'system_ext', 'vendor'}
-device: str
-version: str
-sdk: int
+TEST_MODULE_OVERLAYFS = True

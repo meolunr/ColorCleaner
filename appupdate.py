@@ -4,51 +4,41 @@ import os
 import re
 import shutil
 import subprocess
-import xml.etree.ElementTree as eTree
 from enum import Enum, auto
+from pathlib import Path
 from zipfile import ZipFile
 
+import ccglobal
 import config
 from build.apkfile import ApkFile
-from build.xml import XmlFile
-from hcglobal import LIB_DIR, MISC_DIR, UPDATED_APP_JSON, PRODUCT_PRIVILEGE_PERMISSION_XML, PRIVILEGE_PERMISSIONS, log
 from util import adb, template
 
 
 class NewApp(object):
     class Source(Enum):
+        DATA = auto()
         ROM = auto()
         MODULE = auto()
-        DATA = auto()
 
     def __init__(self, package, data_path, system_path):
+    def __init__(self, package, new_apk, old_dir):
         self.package = package
-        self.data_path = data_path
-        self.system_path = system_path
-        self.system_path_rom = self._combine_system_path(system_path, False)
-        self.system_path_module = self._combine_system_path(system_path, True)
-        self.system_path_rom_with_apk = f'{self.system_path_rom}/{os.path.basename(self.system_path_rom)}.apk'
+        self.new_apk = new_apk
+        self.rom_old_dir = self._combine_rom_path(old_dir)
+        self.module_old_dir = self._combine_module_path(old_dir)
         self.source = None
         self.version_code = None
 
     @staticmethod
-    def _combine_system_path(system_path, is_module):
-        if (is_module and not system_path.startswith('/system/')) or (not is_module and system_path.startswith('/system/')):
-            system_path = f'/system{system_path}'
-        return system_path[1:]
+    def _combine_rom_path(old_dir):
+        if old_dir.startswith('/system/'):
+            return f'system{old_dir}'
+        else:
+            return old_dir[1:]
 
-
-def check_adb_device() -> bool:
-    lines = subprocess.run(['adb', 'devices'], stdout=subprocess.PIPE).stdout.decode().strip().splitlines()
-    num = len(lines)
-    if num == 2:
-        return False
-    elif num < 2:
-        log('未检测到 adb 设备连接，不再进行系统应用更新')
-        return True
-    else:
-        log('检测到多个 adb 设备连接，不再进行系统应用更新')
-        return True
+    @staticmethod
+    def _combine_module_path(old_dir):
+        return old_dir[1:]
 
 
 def get_app_in_data():
@@ -86,14 +76,14 @@ def get_app_in_system():
 
 
 def read_record():
-    log('读取系统应用更新记录')
-    if not os.path.isfile(UPDATED_APP_JSON):
-        if not os.path.isdir('product'):
-            os.mkdir('product')
-        adb.pull(f'/{UPDATED_APP_JSON}', 'product')
-        open(UPDATED_APP_JSON, 'a').close()
+    ccglobal.log('读取系统应用更新记录')
+    json_path = Path(ccglobal.UPDATED_APP_JSON)
+    if not json_path.is_file():
+        json_path.parent.mkdir(exist_ok=True)
+        adb.pull(f'/{ccglobal.UPDATED_APP_JSON}', json_path)
+        open(json_path, 'a').close()
 
-    with open(UPDATED_APP_JSON, 'r', encoding='utf-8') as f:
+    with open(json_path, 'r', encoding='utf-8') as f:
         try:
             data: dict = json.load(f)
             rom, module = set(data.get('rom', set())), set(data.get('module', set()))
@@ -104,8 +94,8 @@ def read_record():
 
 def write_record(*, rom: set = None, module: set = None):
     rom_to_be_written, module_to_be_written = read_record()
-    log('写入系统应用更新记录')
-    with open(UPDATED_APP_JSON, 'w+', encoding='utf-8', newline='\n') as f:
+    ccglobal.log('写入系统应用更新记录')
+    with open(ccglobal.UPDATED_APP_JSON, 'w+', encoding='utf-8', newline='') as f:
         if rom is not None:
             rom_to_be_written = rom
         if module is not None:
@@ -140,11 +130,11 @@ def fetch_updated_app():
 
     path_map_data = get_app_in_data()
     path_map_system = get_app_in_system()
-    for package, path_in_data in path_map_data.items():
+    for package, new_apk in path_map_data.items():
         # Skip xiaomi service framework
         if package == 'com.xiaomi.xmsf':
             continue
-        app = NewApp(package, path_in_data, path_map_system[package])
+        app = NewApp(package, new_apk, path_map_system[package])
         app.source = NewApp.Source.DATA
         app_map[package] = app
 
@@ -152,15 +142,15 @@ def fetch_updated_app():
     for package in rom:
         if package in app_map:
             continue
-        path = adb.get_apk_path(package)
-        app = NewApp(package, path, os.path.dirname(path))
+        new_apk = adb.get_apk_path(package)
+        app = NewApp(package, new_apk, os.path.dirname(new_apk))
         app.source = NewApp.Source.ROM
         app_map[package] = app
     for package in module:
         if package in app_map:
             continue
-        path = adb.get_apk_path(package)
-        app = NewApp(package, path, os.path.dirname(path))
+        new_apk = adb.get_apk_path(package)
+        app = NewApp(package, new_apk, os.path.dirname(new_apk))
         app.source = NewApp.Source.MODULE
         app_map[package] = app
 
@@ -168,96 +158,66 @@ def fetch_updated_app():
     return set(app_map.values())
 
 
-def pull_apk_from_phone(app: NewApp):
-    adb.pull(app.data_path, app.system_path_rom_with_apk)
+def pull_apk_from_phone(new_apk: str, old_apk: str):
+    adb.pull(new_apk, old_apk)
 
-    extract_lib = ApkFile(app.system_path_rom_with_apk).extract_native_libs()
+    extract_lib = ApkFile(old_apk).extract_native_libs()
     if extract_lib is None:
-        with ZipFile(app.system_path_rom_with_apk) as f:
+        with ZipFile(old_apk) as f:
             dirs = {x.split('/')[1] for x in f.namelist() if x.startswith('lib/')}
             extract_lib = len(dirs) > 1
 
     if extract_lib:
-        _7z = f'{LIB_DIR}/7za.exe'
-        subprocess.run([_7z, 'e', '-aoa', app.system_path_rom_with_apk, 'lib/arm64-v8a', f'-o{app.system_path_rom}/lib/arm64'], stdout=subprocess.DEVNULL)
-
-
-def update_privilege_permission(apps: set[NewApp]):
-    apps = {x for x in apps if x.system_path.startswith('/product/priv-app/')}
-    if len(apps) == 0:
-        return
-
-    is_rom_xml = os.path.isfile(PRODUCT_PRIVILEGE_PERMISSION_XML)
-    if not is_rom_xml:
-        # Pull from phone to add into ksu module
-        os.makedirs(os.path.dirname(PRODUCT_PRIVILEGE_PERMISSION_XML))
-        adb.pull(f'/{PRODUCT_PRIVILEGE_PERMISSION_XML}', PRODUCT_PRIVILEGE_PERMISSION_XML)
-    xml = XmlFile(PRODUCT_PRIVILEGE_PERMISSION_XML)
-    root = xml.get_root()
-
-    is_xml_updated = False
-    for app in apps:
-        element = root.find(f"privapp-permissions[@package='{app.package}']")
-        for perm in ApkFile(app.system_path_rom_with_apk).uses_permission() & PRIVILEGE_PERMISSIONS:
-            if element.find(f"permission[@name='{perm}']") is None:
-                is_xml_updated = is_xml_updated or True
-                log(f'新增特许权限: {app.package} -> {perm}')
-                new_permission = eTree.Element('permission')
-                new_permission.set('name', perm)
-                element.append(new_permission)
-
-    if is_xml_updated:
-        eTree.indent(root, '   ')
-        xml.commit()
-    else:
-        if not is_rom_xml:
-            shutil.rmtree('product/etc')
+        _7z = f'{ccglobal.LIB_DIR}/7za.exe'
+        subprocess.run([_7z, 'e', '-aoa', old_apk, 'lib/arm64-v8a', f'-o{os.path.dirname(old_apk)}/lib/arm64'], stdout=subprocess.DEVNULL)
 
 
 def run_on_rom():
-    if check_adb_device():
+    if not adb.is_connected():
         return
     apps = fetch_updated_app()
     packages = set()
     for app in apps:
-        if app.version_code <= ApkFile(app.system_path_rom_with_apk).version_code():
+        old_apk = f'{app.rom_old_dir}/{os.path.basename(app.rom_old_dir)}.apk'
+        if app.version_code <= ApkFile(old_apk).version_code():
             # Xiaomi has updated the apk in ROM
             continue
-        log(f'更新系统应用: {app.system_path_rom}')
-        pull_apk_from_phone(app)
+        ccglobal.log(f'更新系统应用: {app.rom_old_dir}')
+        pull_apk_from_phone(app.new_apk, old_apk)
         packages.add(app.package)
 
-        oat = f'{app.system_path_rom}/oat'
+        oat = f'{app.rom_old_dir}/oat'
         if os.path.exists(oat):
             shutil.rmtree(oat)
 
-    update_privilege_permission(apps)
     write_record(rom=packages, module=set())
+    with open('vendor/build.prop', 'r+', encoding='utf-8', newline='') as f:
+        lines = []
+        for line in f.readlines():
+            if not line.startswith('ro.control_privapp_permissions=enforce'):
+                lines.append(line)
+        f.seek(0)
+        f.truncate()
+        f.writelines(lines)
 
 
 def run_on_module():
-    if check_adb_device():
+    if not adb.is_connected():
         return
     apps = {x for x in fetch_updated_app() if x.source != NewApp.Source.ROM and x.package in config.MODIFY_PACKAGE}
     packages = set()
     remove_oat_output = io.StringIO()
     remove_data_app_output = io.StringIO()
-    package_cache_output = io.StringIO()
-    mount_output = io.StringIO()
 
     for app in apps:
-        log(f'更新系统应用: {app.system_path_module}')
-        os.makedirs(app.system_path_rom)
-        pull_apk_from_phone(app)
+        ccglobal.log(f'更新系统应用: {app.module_old_dir}')
+        os.makedirs(app.module_old_dir)
+        apk_name = os.path.basename(app.module_old_dir)
+        pull_apk_from_phone(app.new_apk, f'{app.module_old_dir}/{apk_name}.apk')
         packages.add(app.package)
-        remove_oat_output.write(f'/{app.system_path_module}/oat\n')
+        remove_oat_output.write(f'/{app.module_old_dir}/oat\n')
         remove_data_app_output.write(f'removeDataApp {app.package}\n')
-        package_cache_output.write(f'rm -f /data/system/package_cache/*/{os.path.basename(app.system_path)}-*\n')
-        mount_output.write(f'mount -o bind $MODDIR/{app.system_path_module} {app.system_path}\n')
 
-    update_privilege_permission(apps)
     write_record(module=packages)
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/customize.sh',
+    template.substitute(f'{ccglobal.MISC_DIR}/module_template/Patch/customize.sh',
                         var_remove_oat=remove_oat_output.getvalue(), var_remove_data_app=remove_data_app_output.getvalue())
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/post-fs-data.sh', var_package_cache=package_cache_output.getvalue())
-    template.substitute(f'{MISC_DIR}/module_template/AppUpdate/post-fs-data.sh.bak', var_mount=mount_output.getvalue())

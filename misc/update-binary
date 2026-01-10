@@ -1,6 +1,6 @@
 #!/sbin/sh
 
-TMPDIR=/tmp/hypercleaner
+TMPDIR=/tmp/colorcleaner
 OUTFD=/proc/self/fd/$2
 ZIPFILE="$3"
 
@@ -10,16 +10,17 @@ print() {
 
 waitForVolumeKey() {
 	print "- 按音量[+]选择"是"，按音量[-]选择"否""
-	keyInfo=true
+	local keyInfo=true
 	while $keyInfo; do
 		keyInfo=$(getevent -qlc 1 | grep KEY_VOLUME)
 		if [ "$keyInfo" == "" ]; then
 			continue
 		else
-			isUpKey=$(echo $keyInfo | grep KEY_VOLUMEUP)
+			local isUpKey=$(echo $keyInfo | grep KEY_VOLUMEUP)
 			[ "$isUpKey" != "" ] && return 0 || return 1
 			break
 		fi
+		sleep 0.1
 	done
 }
 
@@ -42,14 +43,14 @@ remapSuper() {
 
 lookupPackagePath() {
 	for i in $(ls /data/app); do
-		package=$(ls "/data/app/$i" | cut -d '-' -f 1)
+		local package=$(ls "/data/app/$i" | cut -d '-' -f 1)
 		echo "$package:/data/app/$i" >> $TMPDIR/PackagePath.txt
 	done
 }
 
 removeDataApp() {
-	package=$(grep "^$1:" $TMPDIR/PackagePath.txt)
-	path=$(echo $package | cut -d ':' -f 2)
+	local package=$(grep "^$1:" $TMPDIR/PackagePath.txt)
+	local path=$(echo $package | cut -d ':' -f 2)
 	if [ -n "$path" ]; then
 		rm -rf "$path"
 	fi
@@ -64,9 +65,9 @@ chmod -R 0755 $TMPDIR
 device=$(getprop ro.product.name)
 print "=============================="
 print " "
-print "    < HyperCleaner >"
+print "    < ColorCleaner >"
 print " "
-print "    https://github.com/meolunr/HyperCleaner"
+print "    https://github.com/meolunr/ColorCleaner/tree/hyper"
 print " "
 print "    设备代号：$device"
 print "    ROM 代号：$var_device"

@@ -12,9 +12,11 @@ class Chunk:
 
 
 class StringChunk(Chunk):
+    # @formatter:off
     __FORMAT_STRING = ('<2I'  # string count, style count
-                       '2H'  # utf-8, sorted (flags)
-                       '2I')  # strings start, styles start
+                      '2H'    # utf-8, sorted (flags)
+                      '2I')   # strings start, styles start
+    # @formatter:on
 
     def __init__(self, f: BytesIO):
         super().__init__(f)
@@ -41,15 +43,19 @@ class StartNamespaceChunk(Chunk):
 
 class StartTagChunk(Chunk):
     TYPE = 0x102
+    # @formatter:off
     __FORMAT_STRING = ('<2I'  # line number, comment
-                       '2I'  # namespace uri, name
-                       '3H'  # start, size, count (attribute)
-                       '3H')  # id index, class index, style index
+                      '2I'    # namespace uri, name
+                      '3H'    # start, size, count (attribute)
+                      '3H')   # id index, class index, style index
+    # @formatter:on
 
     class Attribute:
         SIZE = 20
-        __FORMAT_STRING = ('<3I'  # namespace uri, name, raw value
-                           'H2BI')  # size, res0, data type, data
+        # @formatter:off
+        __FORMAT_STRING = ('<3I'    # namespace uri, name, raw value
+                          'H2BI')   # size, res0, data type, data
+        # @formatter:on
         DATA_TYPE_REFERENCE = 0x01
         DATA_TYPE_STRING = 0x03
         DATA_TYPE_BOOLEAN = 0x12
@@ -96,7 +102,7 @@ class ManifestXml:
                 chunk = StartTagChunk(f)
                 name = self._get_string(chunk.name)
                 # Only parse these elements because we need their attributes
-                if name not in ('manifest', 'uses-permission', 'application'):
+                if name not in ('manifest', 'application'):
                     # Skip attributes of start tag
                     f.seek(chunk.attribute_count * StartTagChunk.Attribute.SIZE, os.SEEK_CUR)
                     continue
@@ -108,8 +114,6 @@ class ManifestXml:
         match name:
             case 'manifest':
                 pass
-            case 'uses-permission':
-                self.attributes.setdefault(name, set())
             case _:
                 self.attributes[name] = {}
 
@@ -129,9 +133,6 @@ class ManifestXml:
             match name:
                 case 'manifest':
                     self.attributes[key] = attribute.data
-                case 'uses-permission':
-                    if key == 'android:name':
-                        self.attributes[name].add(attribute.data)
                 case _:
                     self.attributes[name][key] = attribute.data
 
