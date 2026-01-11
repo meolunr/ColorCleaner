@@ -250,7 +250,7 @@ def compress_zip():
     md5 = hashlib.md5()
     with open('tmp.zip', 'rb') as f:
         md5.update(f.read())
-    filename = f'CC_{ccglobal.device}_{ccglobal.version}{ccglobal.patch_number_suffix()}_{md5.hexdigest()[:10]}.zip'
+    filename = f'CC_{ccglobal.device}_{ccglobal.version}{ccglobal.patch_number_suffix()}_{md5.hexdigest()[:10]}_{ccglobal.sdk}.zip'
     os.rename('tmp.zip', filename)
     ccglobal.log(f'全量包文件: {os.path.abspath(filename).replace('\\', '/')}')
 
@@ -299,7 +299,7 @@ def make_module(args: argparse.Namespace):
     template.substitute(template_dir.joinpath('module.prop'), var_version_code=version_code, var_version=version_name)
 
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
-    subprocess.run([_7z, 'a', f'CC_Patch_{version_name}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
+    subprocess.run([_7z, 'a', f'CC-Patch_{version_name}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
 
 
 def make_rom(args: argparse.Namespace):

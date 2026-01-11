@@ -107,8 +107,8 @@ def turn_off_flashlight_with_power_key():
     xml.commit()
 
 
-def remove_signature_verification():
-    ccglobal.log('去除 V3 签名完整性验证')
+def disable_signature_verification():
+    ccglobal.log('禁用 V3 签名完整性验证')
     apk = ApkFile('system/system/framework/framework.jar')
     apk.decode()
 
@@ -1114,7 +1114,7 @@ def run_on_rom():
     disable_cn_gms()
     disable_activity_start_dialog()
     turn_off_flashlight_with_power_key()
-    remove_signature_verification()
+    disable_signature_verification()
     patch_oplus_services()
     patch_system_ui()
     patch_launcher()

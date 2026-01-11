@@ -25,6 +25,6 @@ def get_prop_value(prop: str):
 def patch_number_suffix():
     global patch_number
     if patch_number > 0:
-        return f'_P{patch_number:02d}'
+        return f'-P{patch_number:02d}'
     else:
         return ''
