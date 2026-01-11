@@ -120,7 +120,7 @@ def patch_miui_services():
     specifier = MethodSpecifier()
     specifier.name = 'getCheckStartActivityIntent'
     old_body = smali.find_method(specifier)
-    pattern = 'if-eqz p6, :cond_\S+'
+    pattern = r'if-eqz p6, :cond_\S+'
     match = re.search(pattern, old_body)
     new_body = old_body.replace(match.group(0), '')
     smali.method_replace(old_body, new_body)
@@ -250,14 +250,14 @@ def patch_theme_manager():
     smali.method_return_boolean(specifier, False)
 
     # Filter advertising elements
-    smali = apk.find_smali('->getAdInfo(Z)Lcom/android/thememanager/basemodule/ad/model/AdInfo;', package='com/android/thememanager/recommend/model/adapter/factory').pop()
+    smali = apk.find_smali('Lcom/android/thememanager/recommend/model/entity/element/DetailRecommendElement;', package='com/android/thememanager/recommend/model/adapter/factory').pop()
     specifier = MethodSpecifier()
     specifier.parameters = 'Lcom/android/thememanager/router/recommend/entity/UICard;'
     specifier.return_type = 'Ljava/util/List;'
 
     old_body = smali.find_method(specifier)
     pattern = r'''
-    :goto_(\d+)
+    :goto_(\S+)
     invoke-interface {p1}, Ljava/util/Iterator;->hasNext\(\)Z
 '''
     match = re.search(pattern, old_body)

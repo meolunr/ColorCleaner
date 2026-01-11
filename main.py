@@ -61,7 +61,7 @@ def read_rom_information():
     with open('product/etc/build.prop', 'r', encoding='utf-8') as f:
         for line in f:
             if line.startswith('ro.product.product.name='):
-                ccglobal.device = ccglobal.get_prop_value(line)
+                ccglobal.device = re.match(r'miproduct_(\S+)', ccglobal.get_prop_value(line)).group(1)
             elif line.startswith('ro.product.build.version.incremental='):
                 ccglobal.version = re.match(r'OS(\d+\.\d+\.\d+\.\d+)\..+', ccglobal.get_prop_value(line)).group(1)
             elif line.startswith('ro.product.build.version.release='):
@@ -268,7 +268,7 @@ def compress_zip():
     md5 = hashlib.md5()
     with open('tmp.zip', 'rb') as f:
         md5.update(f.read())
-    filename = f'HC_{ccglobal.device}_{ccglobal.version}_{md5.hexdigest()[:10]}.zip'
+    filename = f'CC_{ccglobal.device}_{ccglobal.version}_{md5.hexdigest()[:10]}_{ccglobal.sdk}.zip'
     os.rename('tmp.zip', filename)
     ccglobal.log(f'全量包文件: {os.path.abspath(filename).replace('\\', '/')}')
 

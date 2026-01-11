@@ -13,7 +13,7 @@ system/system/priv-app/BackupRestoreConfirmation
 system/system/priv-app/BlockedNumberProvider
 system/system/priv-app/BuiltInPrintService
 system/system/priv-app/CallLogBackup
-system/system/priv-app/CellBroadcastLegacyApp
+system/system/priv-app/CellBroadcastServiceModulePlatform
 system/system/priv-app/DeviceAsWebcam
 system/system/priv-app/DeviceDiagnostics
 system/system/priv-app/DynamicSystemInstallationService
@@ -31,6 +31,7 @@ system_ext/app/MiuiPrintSpooler
 system_ext/app/ModemTestBox
 system_ext/app/WAPPushManager
 system_ext/priv-app/AvatarPicker
+system_ext/priv-app/CellBroadcastAppPlatform
 system_ext/priv-app/EmergencyInfo
 system_ext/priv-app/GoogleServicesFramework
 system_ext/priv-app/StatementService
@@ -80,6 +81,7 @@ product/priv-app/MIUIPersonalAssistantPhoneOS3
 product/priv-app/MIUIQuickSearchBox
 product/priv-app/RegService
 product/priv-app/SettingsIntelligence
+product/overlay/CellBroadcastReceiverResCommon_Sys.apk
 product/pangu/system/priv-app/SystemHelper
 product/data-app
 # 下载管理
