@@ -72,8 +72,8 @@ def replace_analytics():
     shutil.copy(f'{ccglobal.MISC_DIR}/BlankAnalytics.apk', blank_dir)
 
 
-def remove_signature_verification():
-    ccglobal.log('去除 V3 签名完整性验证')
+def disable_signature_verification():
+    ccglobal.log('禁用 V3 签名完整性验证')
     apk = ApkFile('system/system/framework/framework.jar')
     apk.decode()
 
@@ -120,12 +120,12 @@ def patch_miui_services():
     specifier = MethodSpecifier()
     specifier.name = 'getCheckStartActivityIntent'
     old_body = smali.find_method(specifier)
-    pattern = 'if-eqz p6, :cond_.+'
+    pattern = 'if-eqz p6, :cond_\S+'
     match = re.search(pattern, old_body)
     new_body = old_body.replace(match.group(0), '')
     smali.method_replace(old_body, new_body)
 
-    ccglobal.log('防止主题恢复')
+    ccglobal.log('禁用主题自动恢复')
     smali = apk.open_smali('com/android/server/am/ActivityManagerServiceImpl.smali')
     specifier = MethodSpecifier()
     specifier.name = 'finishBooting'
@@ -169,7 +169,7 @@ def patch_system_ui():
 
 @modified('product/priv-app/MIUIPackageInstaller/MIUIPackageInstaller.apk')
 def patch_package_installer():
-    ccglobal.log('净化应用包管理组件')
+    ccglobal.log('去除应用包管理组件广告')
     apk = ApkFile('product/priv-app/MIUIPackageInstaller/MIUIPackageInstaller.apk')
     apk.refactor()
     apk.decode(False)
@@ -185,14 +185,6 @@ def patch_package_installer():
     specifier = MethodSpecifier()
     specifier.return_type = 'Z'
     specifier.keywords.add('"ads_enable"')
-    smali.method_return_boolean(specifier, False)
-
-    # Allow installation of system applications
-    smali = apk.find_smali('"PackageUtil"', '"getPackageVersionCode"').pop()
-    specifier = MethodSpecifier()
-    specifier.parameters = 'Landroid/content/Context;Ljava/lang/String;'
-    specifier.return_type = 'Z'
-    specifier.keywords.add('getApplicationInfo')
     smali.method_return_boolean(specifier, False)
 
     # Turn on the safe mode UI without enabling its features
@@ -215,6 +207,14 @@ def patch_package_installer():
     specifier.return_type = 'Z'
     specifier.keywords.add(call_instruction)
     smali.method_return_boolean(specifier, True)
+
+    ccglobal.log('允许应用包管理组件安装系统应用')
+    smali = apk.find_smali('"PackageUtil"', '"getPackageVersionCode"').pop()
+    specifier = MethodSpecifier()
+    specifier.parameters = 'Landroid/content/Context;Ljava/lang/String;'
+    specifier.return_type = 'Z'
+    specifier.keywords.add('getApplicationInfo')
+    smali.method_return_boolean(specifier, False)
 
     # Hide outdated switches
     xml = apk.open_xml('xml/settings.xml')
@@ -287,7 +287,7 @@ def patch_theme_manager():
 
     old_body = smali.find_method(specifier)
     pattern = r'''
-    return-object ([v|p]\d)
+    return-object ([v|p]\d+)
 '''
     match = re.search(pattern, old_body)
     register1 = match.group(1)
@@ -465,13 +465,13 @@ def patch_security_center():
     pattern = f'''\
     invoke-static {{}}, {utils_type_signature}->{re.escape(method_signature_1)}
 
-    move-result .+?
+    move-result [v|p]\\d+
 
-    if-eqz .+?, :cond_\\d
+    if-eqz [v|p]\\d+, :cond_\\S+
 
     invoke-static {{}}, {utils_type_signature}->{re.escape(method_signature_2)}
 
-    move-result ([v|p]\\d)
+    move-result ([v|p]\\d+)
 '''
     repl = f'''\
     invoke-static {{}}, {utils_type_signature}->{method_signature_3}
@@ -506,25 +506,25 @@ def patch_security_center():
     specifier.keywords.add('-0x80000000')
     old_body = smali.find_method(specifier)
 
-    pattern = f'''\
-    invoke-static {{p0}}, L.+?;->.+?\\(Landroid/content/Context;\\)I
-
-    move-result ([v|p]\\d)
-
-    invoke-static {{p0}}, L.+?;->.+?\\(Landroid/content/Context;\\)I
-
-    move-result ([v|p]\\d)
-
-    const/high16 .+?, -0x80000000
-(?:.|\\n)*?
-    const/4 ([v|p]\\d), 0x5
-
-    if-le .+?, \\3, :cond_(\\d)
-
-    :cond_\\d
-    move \\1, \\2
-
-    :cond_\\4
+    pattern = r'''
+    invoke-static {p0}, \S+;->\S+\(Landroid/content/Context;\)I
+(?:.|\n)*?
+    move-result ([v|p]\d+)
+(?:.|\n)*?
+    invoke-static {p0}, \S+;->\S+\(Landroid/content/Context;\)I
+(?:.|\n)*?
+    move-result ([v|p]\d+)
+(?:.|\n)*?
+    const/high16 [v|p]\d+, -0x80000000
+(?:.|\n)*?
+    const/4 ([v|p]\d+), 0x5
+(?:.|\n)*?
+    if-le [v|p]\d+, \3, (:cond_\d+)
+(?:.|\n)*?
+    :cond_\d+
+    move \1, \2
+(?:.|\n)*?
+    \4
 '''
     match = re.search(pattern, old_body)
     register1 = match.group(1)
@@ -532,11 +532,11 @@ def patch_security_center():
     cond = match.group(4)
 
     pattern = f'''\
-    :cond_{cond}
+    {cond}
 (?:.|\\n)*?
 .end method'''
     repl = f'''\
-    :cond_{cond}
+    {cond}
     new-instance {register2}, Ljava/lang/StringBuilder;
 
     invoke-direct {{{register2}}}, Ljava/lang/StringBuilder;-><init>()V
@@ -702,13 +702,14 @@ def remove_mms_ads():
     specifier = MethodSpecifier()
     specifier.name = 'setHideButton'
     specifier.is_abstract = False
-    pattern = '''\
-    iput-boolean ([v|p]\\d), p0, L.+?;->.+?:Z
+    pattern = r'''
+    iput-boolean ([v|p]\d+), p0, \S+;->\S+:Z
 '''
-    repl = '''\
-    const/4 \\g<1>, 0x1
+    repl = r'''
+    const/4 \g<1>, 0x1
 
-\\g<0>'''
+    \g<0>
+'''
     for smali in apk.find_smali('final setHideButton'):
         old_body = smali.find_method(specifier)
         new_body = re.sub(pattern, repl, old_body)
@@ -723,9 +724,14 @@ def disable_mi_trust_service_mrm():
     apk = ApkFile('product/app/MiTrustService/MiTrustService.apk')
     apk.decode()
 
-    smali = apk.open_smali('com/xiaomi/trustservice/remoteservice/eventhandle/statusEventHandle.smali')
+    smali = apk.find_smali('"MiTrustService/statusEventHandle"', '"try init mrmd Service"').pop()
     specifier = MethodSpecifier()
-    specifier.name = 'initIMrmService'
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.is_final = True
+    specifier.parameters = ''
+    specifier.return_type = 'Z'
+    specifier.keywords.add('"MiTrustService/statusEventHandle"')
+    specifier.keywords.add('"try init mrmd Service"')
     smali.method_return_boolean(specifier, False)
 
     apk.build()
@@ -769,7 +775,7 @@ def ignore_modified_app_update():
 def run_on_rom():
     rm_files()
     replace_analytics()
-    remove_signature_verification()
+    disable_signature_verification()
     patch_miui_services()
     patch_system_ui()
     patch_package_installer()

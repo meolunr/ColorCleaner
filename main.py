@@ -333,7 +333,7 @@ def main():
     subparsers.add_parser('module', help='构建系统更新模块', parents=[out_parser], add_help=False)
     args = parser.parse_args()
 
-    # os.mkdir(args.out_dir)
+    os.mkdir(args.out_dir)
     os.chdir(args.out_dir)
 
     start = time.time()
