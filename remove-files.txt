@@ -68,7 +68,6 @@ product/app/ThirdAppAssistant
 product/app/talkback
 product/app/Updater
 product/app/WMService
-product/app/XiaoaiRecommendation
 product/priv-app/Backup
 product/priv-app/ConfigUpdater
 product/priv-app/GoogleOneTimeInitializer
