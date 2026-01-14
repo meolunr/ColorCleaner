@@ -31,7 +31,7 @@ system_ext/app/MiuiPrintSpooler
 system_ext/app/ModemTestBox
 system_ext/app/WAPPushManager
 system_ext/priv-app/AvatarPicker
-system_ext/priv-app/CellBroadcastAppPlatform
+# system_ext/priv-app/CellBroadcastAppPlatform
 system_ext/priv-app/EmergencyInfo
 system_ext/priv-app/GoogleServicesFramework
 system_ext/priv-app/StatementService
@@ -45,7 +45,8 @@ product/app/DeviceInfoQR
 product/app/GoogleLocationHistory
 product/app/GooglePrintRecommendationService
 product/app/HybridPlatform
-product/app/mi_connect_service
+# product/app/LyraSdkApp
+product/app/LyraWOS3CN
 product/app/MiBugReportOS3
 product/app/MIUIAccessibility
 product/app/MIUIAiasstService
@@ -93,10 +94,10 @@ product/data-app
 # 时钟
 # 相册
 # 笔记
-# 屏幕录制
 # 手机管家
 # 录音机
 # 主题商店
+# 全球上网
 # 天气
 # 小米文档查看器
 # 万能遥控
