@@ -179,8 +179,10 @@ def unpack_img(opex_files: list[str]):
         with open('opex/opex.cfg', 'r', encoding='utf-8') as f:
             json_dict = json.load(f)
             business_code = json_dict['businessCode']
-            ccglobal.device = json_dict['otaVersionLimits'][0].split('_')[0]
+            ota_version_limits = json_dict['otaVersionLimits']
             ccglobal.patch_number += 1
+            if not hasattr(ccglobal, 'device') and len(ota_version_limits) == 1:
+                ccglobal.device = ota_version_limits.pop().split('_')[0]
         os.remove('opex/opex.cfg')
 
         ccglobal.log(f'提取 Opex: {business_code}')
