@@ -83,6 +83,8 @@ product/priv-app/MIUIQuickSearchBox
 product/priv-app/RegService
 product/priv-app/SettingsIntelligence
 product/overlay/CellBroadcastReceiverResCommon_Sys.apk
+product/overlay/MiuiCellBroadcastServiceOverlay.apk
+product/overlay/MiuiNewCallSdkResOverlay.apk
 product/pangu/system/priv-app/SystemHelper
 product/data-app
 # 下载管理
