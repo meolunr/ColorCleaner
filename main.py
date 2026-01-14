@@ -98,6 +98,21 @@ def install_lkm(no_lkm: bool):
     magiskboot = f'{ccglobal.LIB_DIR}/magiskboot.exe'
     subprocess.run([ksud, 'boot-patch', '--magiskboot', magiskboot, '-b', 'images/init_boot.img', '--kmi', ccglobal.kmi, '--out-name', 'images/init_boot.img'], check=True)
 
+    bin_path = Path('/data/adb/ksu/bin')
+    root_path = Path(Path.cwd().root)
+    paths = list(bin_path.parts[1:])
+    while paths:
+        folder = root_path.joinpath(*paths)
+        if folder == bin_path:
+            folder.joinpath('bootctl').unlink()
+            folder.joinpath('busybox').unlink()
+            folder.joinpath('resetprop').unlink()
+        try:
+            folder.rmdir()
+        except OSError:
+            break
+        paths.pop()
+
 
 def patch_vbmeta():
     for img in glob('vbmeta*.img', root_dir='images'):
