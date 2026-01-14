@@ -587,6 +587,14 @@ def patch_security_center():
     specifier.keywords.add('"key_check_item_root"')
     smali.method_return_boolean(specifier, False)
 
+    ccglobal.log('禁用 ADB 安装确认')
+    smali = apk.find_smali('"permcenter_install_intercept_enabled"').pop()
+    specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
+    specifier.return_type = 'Z'
+    specifier.keywords.add('"permcenter_install_intercept_enabled"')
+    smali.method_return_boolean(specifier, False)
+
     ccglobal.log('去除危险操作倒计时确认')
     smali = apk.open_smali('com/miui/permcenter/privacymanager/model/InterceptBaseActivity.smali')
     specifier = MethodSpecifier()
