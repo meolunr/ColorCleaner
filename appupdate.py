@@ -20,7 +20,6 @@ class NewApp(object):
         ROM = auto()
         MODULE = auto()
 
-    def __init__(self, package, data_path, system_path):
     def __init__(self, package, new_apk, old_dir):
         self.package = package
         self.new_apk = new_apk

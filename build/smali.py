@@ -132,7 +132,7 @@ class SmaliFile:
 
     def get_type_signature(self):
         normpath = self.file.replace('\\', '/')
-        return re.sub(r'.+?smali/classes\d*/(.+?)\.smali', r'L\g<1>;', normpath)
+        return re.sub(r'.+?/smali/classes\d*/(.+?)(?:\.1)*\.smali', r'L\g<1>;', normpath)
 
     def _parse_method(self, method_defines: tuple[str, ...]):
         specifier = MethodSpecifier()

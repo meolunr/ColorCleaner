@@ -149,7 +149,7 @@ def patch_miui_services():
 
 
 @modified('system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk')
-def patch_system_ui():
+def disable_historical_notification():
     apk = ApkFile('system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk')
     apk.decode()
 
@@ -284,27 +284,12 @@ def patch_theme_manager():
     specifier = MethodSpecifier()
     specifier.name = 'toResource'
     specifier.return_type = 'Lcom/android/thememanager/basemodule/resource/model/Resource;'
-
-    old_body = smali.find_method(specifier)
-    pattern = r'''
-    return-object ([v|p]\d+)
+    insert = '''\
+    const/4 v0, 0x1
+    
+    iput-boolean v0, p0, Lcom/android/thememanager/detail/theme/model/OnlineResourceDetail;->bought:Z
 '''
-    match = re.search(pattern, old_body)
-    register1 = match.group(1)
-    num = int(register1[1:]) - 1
-    if num < 0:
-        num += 2
-    register2 = f'{register1[:1]}{num}'
-
-    repl = f'''\
-    const/4 {register2}, 0x1
-
-    iput-boolean {register2}, p0, Lcom/android/thememanager/detail/theme/model/OnlineResourceDetail;->bought:Z
-
-    return-object {register1}
-'''
-    new_body = old_body.replace(match.group(0), repl)
-    smali.method_replace(old_body, new_body)
+    smali.method_insert_before(specifier, insert)
 
     smali = apk.open_smali('com/android/thememanager/basemodule/views/DiscountPriceView.smali')
     specifier = MethodSpecifier()
@@ -464,13 +449,13 @@ def patch_security_center():
 
     pattern = f'''\
     invoke-static {{}}, {utils_type_signature}->{re.escape(method_signature_1)}
-
+(?:.|\n)*?
     move-result [v|p]\\d+
-
+(?:.|\n)*?
     if-eqz [v|p]\\d+, :cond_\\S+
-
+(?:.|\n)*?
     invoke-static {{}}, {utils_type_signature}->{re.escape(method_signature_2)}
-
+(?:.|\n)*?
     move-result ([v|p]\\d+)
 '''
     repl = f'''\
@@ -556,27 +541,7 @@ def patch_security_center():
     new_body = re.sub(pattern, repl, old_body)
     smali.method_replace(old_body, new_body)
 
-    ccglobal.log('手机管家 100 分')
-    # Lock 100 score
-    smali = apk.open_smali('com/miui/securityscan/scanner/ScoreManager.smali')
-    specifier = MethodSpecifier()
-    specifier.return_type = 'I'
-    specifier.keywords.add('getMinusPredictScore')
-
-    old_body = smali.find_method(specifier)
-    lines = old_body.splitlines()
-    new_body = f'''\
-{lines[0]}
-    .locals 0
-
-    const/16 p0, 0x0
-
-    return p0
-.end method
-'''
-    smali.method_replace(old_body, new_body)
-
-    # Disable click events
+    ccglobal.log('禁用手机管家立即修复')
     smali = apk.open_smali('com/miui/securityscan/ui/main/MainContentFrame.smali')
     specifier = MethodSpecifier()
     specifier.name = 'onClick'
@@ -700,20 +665,14 @@ def remove_mms_ads():
 
     ccglobal.log('去除短信下方广告')
     specifier = MethodSpecifier()
+    specifier.access = MethodSpecifier.Access.PUBLIC
     specifier.name = 'setHideButton'
-    specifier.is_abstract = False
-    pattern = r'''
-    iput-boolean ([v|p]\d+), p0, \S+;->\S+:Z
-'''
-    repl = r'''
-    const/4 \g<1>, 0x1
 
-    \g<0>
+    insert = '''\
+    const/4 p1, 0x1
 '''
-    for smali in apk.find_smali('final setHideButton'):
-        old_body = smali.find_method(specifier)
-        new_body = re.sub(pattern, repl, old_body)
-        smali.method_replace(old_body, new_body)
+    for smali in apk.find_smali('.method public setHideButton(Z)V'):
+        smali.method_insert_before(specifier, insert)
 
     apk.build()
 
@@ -777,7 +736,7 @@ def run_on_rom():
     replace_analytics()
     disable_signature_verification()
     patch_miui_services()
-    patch_system_ui()
+    disable_historical_notification()
     patch_package_installer()
     patch_theme_manager()
     disable_sensitive_word_check()
@@ -789,7 +748,7 @@ def run_on_rom():
 
 
 def run_on_module():
-    patch_system_ui()
+    disable_historical_notification()
     patch_package_installer()
     patch_theme_manager()
     disable_sensitive_word_check()
