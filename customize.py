@@ -679,7 +679,7 @@ def patch_tele_service():
     smali.method_insert_before(specifier, insert)
 
     ccglobal.log('去除移动网络中的流量卡广告')
-    smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"', package='androidx/appcompat/widget').pop()
+    smali = apk.find_smali('"SIMS_TrafficCardUtils"', '"clearHighDataSimCardConfiguration"').pop()
     specifier = MethodSpecifier()
     specifier.name = 'run'
     specifier.parameters = ''
