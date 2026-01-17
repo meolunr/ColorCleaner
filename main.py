@@ -230,7 +230,7 @@ def compress_zip():
         md5.update(f.read())
     filename = f'CC_{ccglobal.device}_{ccglobal.version}{ccglobal.patch_number_suffix()}_{md5.hexdigest()[:10]}_{ccglobal.sdk}.zip'
     os.rename('tmp.zip', filename)
-    ccglobal.log(f'全量包文件: {os.path.abspath(filename).replace('\\', '/')}')
+    ccglobal.log(f'全量包文件: {Path(filename).resolve().as_posix()}')
 
 
 def print_opex(args: argparse.Namespace):

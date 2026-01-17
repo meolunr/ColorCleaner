@@ -15,6 +15,7 @@ import config
 from util import adb
 from util import crypto
 from util import imgfile
+from util import myoverlay
 
 
 class RegionCN(Enum):
@@ -198,51 +199,39 @@ def is_cygwin_symlink(file: str):
     return False
 
 
-def update_file(src: str, dst: str):
-    ccglobal.log(f'更新系统文件: {dst}')
-    if os.path.isfile(dst):
-        os.remove(dst)
-    elif os.path.isdir(dst):
-        shutil.rmtree(dst)
-    if is_cygwin_symlink(src):
+def sync_opex_files(opex_files: list[str], is_module: bool):
+    if not opex_files:
         return
+    unpack_img(opex_files)
 
-    Path(dst).parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(src, dst)
+    for ovl_update in iglob('opex/ovl_update_*'):
+        for root, _, files in os.walk(ovl_update):
+            for file in files:
+                if file == 'opex.cfg':
+                    continue
+                src = os.path.join(root, file)
+                dst = Path(src).relative_to(ovl_update).as_posix()
+                if not is_module:
+                    dst = myoverlay.local_real_path(f'/{dst}')
+
+                ccglobal.log(f'更新系统文件: {dst}')
+                if os.path.isfile(dst):
+                    os.remove(dst)
+                elif os.path.isdir(dst):
+                    shutil.rmtree(dst)
+                if is_cygwin_symlink(src):
+                    continue
+
+                Path(dst).parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(src, dst)
 
 
 def run_on_rom(opex_files: list[str]):
-    if not opex_files:
-        return
-    unpack_img(opex_files)
-
-    for root, _, files in os.walk('opex'):
-        for file in files:
-            if file == 'opex.cfg':
-                continue
-            src = os.path.join(root, file)
-            dst_splits = src[21:].replace('\\', '/').split('/')
-
-            for item in ('my_product', 'my_stock', 'my_product/product_overlay'):
-                dst = f'{item}/{'/'.join(dst_splits[1:])}'
-                if os.path.exists(dst):
-                    dst_splits[0] = item
-                    break
-            update_file(src, '/'.join(dst_splits))
+    sync_opex_files(opex_files, False)
 
 
 def run_on_module(opex_files: list[str]):
-    if not opex_files:
-        return
-    unpack_img(opex_files)
-
-    for root, _, files in os.walk('opex'):
-        for file in files:
-            if file == 'opex.cfg':
-                continue
-            src = os.path.join(root, file)
-            dst = src[21:].replace('\\', '/')
-            update_file(src, dst)
+    sync_opex_files(opex_files, True)
 
 
 def fetch_opex():
