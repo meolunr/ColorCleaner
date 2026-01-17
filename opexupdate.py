@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 from enum import Enum
+from glob import iglob
 from pathlib import Path
 from time import time
 
@@ -13,6 +14,7 @@ import ccglobal
 import config
 from util import adb
 from util import crypto
+from util import imgfile
 
 
 class RegionCN(Enum):
@@ -173,7 +175,6 @@ def unpack_img(opex_files: list[str]):
 
     ccglobal.patch_number = 0
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
-    e2fs_tool = f'{ccglobal.LIB_DIR}/e2fstool.exe'
     for file in opex_files:
         subprocess.run([_7z, 'e', file, 'opex.cfg', '-oopex'], check=True, stdout=subprocess.DEVNULL)
         with open('opex/opex.cfg', 'r', encoding='utf-8') as f:
@@ -185,9 +186,8 @@ def unpack_img(opex_files: list[str]):
                 ccglobal.device = ota_version_limits.pop().split('_')[0]
         os.remove('opex/opex.cfg')
 
-        ccglobal.log(f'提取 Opex: {business_code}')
         subprocess.run([_7z, 'e', file, 'opex.img', '-oopex'], check=True, stdout=subprocess.DEVNULL)
-        subprocess.run([e2fs_tool, 'opex/opex.img', f'opex/{business_code}'], check=True)
+        imgfile.unpack('opex/opex.img', business_code, 'opex')
         os.remove('opex/opex.img')
 
 

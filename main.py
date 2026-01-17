@@ -32,30 +32,8 @@ def remove_official_recovery():
 
 
 def unpack_img():
-    extract_erofs = f'{ccglobal.LIB_DIR}/extract.erofs.exe'
-    magiskboot = f'{ccglobal.LIB_DIR}/magiskboot.exe'
-    partition_filesystem = {}
-
     for partition in config.UNPACK_PARTITIONS:
-        img = f'{partition}.img'
-        file = f'images/{img}'
-        filesystem = imgfile.filesystem(file)
-        ccglobal.log(f'提取分区文件: {img}, 格式: {filesystem}')
-        match filesystem:
-            case imgfile.FileSystem.EROFS:
-                subprocess.run([extract_erofs, '-x', '-i', file], check=True)
-            case imgfile.FileSystem.BOOT:
-                os.mkdir(partition)
-                shutil.copy(file, f'{partition}/{img}')
-                os.chdir(partition)
-                subprocess.run([magiskboot, 'unpack', img], check=True)
-                os.chdir('..')
-        partition_filesystem[partition] = filesystem.name
-
-    if not os.path.isdir('config'):
-        os.mkdir('config')
-    with open(ccglobal.PARTITION_FILESYSTEM_JSON, 'w', encoding='utf-8') as f:
-        json.dump(partition_filesystem, f, indent=4)
+        imgfile.unpack(f'images/{partition}.img', partition)
 
 
 def read_rom_information():
@@ -148,24 +126,9 @@ def move_deletable_apk():
 
 
 def repack_img():
-    mkfs_erofs = f'{ccglobal.LIB_DIR}/mkfs.erofs.exe'
-    magiskboot = f'{ccglobal.LIB_DIR}/magiskboot.exe'
-    with open(ccglobal.PARTITION_FILESYSTEM_JSON, 'r', encoding='utf-8') as f:
-        partition_filesystem: dict = json.load(f)
-
     for partition in config.UNPACK_PARTITIONS:
-        ccglobal.log(f'打包分区文件: {partition}')
-        file = f'images/{partition}.img'
-        filesystem = imgfile.FileSystem[partition_filesystem[partition]]
-        match filesystem:
-            case imgfile.FileSystem.EROFS:
-                imgfile.sync_app_perm_and_context(partition)
-                subprocess.run([mkfs_erofs, '-zlz4hc,1', '-T', '1230768000', '--mount-point', f'/{partition}',
-                                '--fs-config-file', f'config/{partition}_fs_config', '--file-contexts', f'config/{partition}_file_contexts', file, partition], check=True)
-            case imgfile.FileSystem.BOOT:
-                os.chdir(partition)
-                subprocess.run([magiskboot, 'repack', 'boot.img', f'../{file}'], check=True)
-                os.chdir('..')
+        imgfile.sync_app_perm_and_context(partition)
+        imgfile.repack(f'images/{partition}.img', partition)
 
     ccglobal.log('清空 my_company 和 my_preload 分区')
     shutil.copy(f'{ccglobal.MISC_DIR}/BlankErofs.img', 'images/my_company.img')
