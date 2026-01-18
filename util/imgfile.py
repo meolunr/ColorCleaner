@@ -29,11 +29,21 @@ _FS_TYPES = (
 )
 
 
+def filesystem(file: str) -> FileSystem | None:
+    with open(file, 'rb') as f:
+        for fs, offset, magic in _FS_TYPES:
+            f.seek(offset, os.SEEK_SET)
+            buf = f.read(len(magic))
+            if buf == magic:
+                return fs
+    return None
+
+
 def unpack(file: str, partition: str, out_dir: str = '.'):
     out_dir = os.path.relpath(out_dir)
     Path(out_dir).joinpath('config').mkdir(exist_ok=True)
 
-    fs_type = _filesystem(file)
+    fs_type = filesystem(file)
     with open(f'{out_dir}/config/{partition}_fs_type', 'w', encoding='utf-8') as f:
         f.write(fs_type.name)
 
@@ -112,13 +122,3 @@ def sync_app_perm_and_context(partition: str, out_dir: str = '.'):
         f.write(mode_output.getvalue())
     with open(f'{out_dir}/config/{partition}_file_contexts', 'a', encoding='utf-8') as f:
         f.write(context_output.getvalue())
-
-
-def _filesystem(file: str) -> FileSystem | None:
-    with open(file, 'rb') as f:
-        for fs, offset, magic in _FS_TYPES:
-            f.seek(offset, os.SEEK_SET)
-            buf = f.read(len(magic))
-            if buf == magic:
-                return fs
-    return None
