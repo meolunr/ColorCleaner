@@ -9,6 +9,8 @@ from .axml import ManifestXml
 from .smali import SmaliFile
 from .xml import XmlFile
 
+_MODIFIED_FLAG = b'CC-Mod'
+
 
 class ApkFile:
     def __init__(self, file: str):
@@ -16,15 +18,27 @@ class ApkFile:
         self.output = f'{self.file}.out'
         self._manifest_attributes = None
 
-    def decode(self, no_res=True):
+    def not_need_modify(self):
+        if os.path.isfile(self.file):
+            with ZipFile(self.file, 'r') as f:
+                return f.comment == _MODIFIED_FLAG
+        return True
+
+    def decode(self, *, no_res=True):
         if no_res:
             apkeditor.decode(self.file, self.output, 'raw')
         else:
             apkeditor.decode(self.file, self.output)
 
-    def build(self):
+    def build(self, *, remove_oat=True):
         apkeditor.build(self.output, self.file)
         shutil.rmtree(self.output)
+
+        with ZipFile(self.file, 'a') as f:
+            f.comment = _MODIFIED_FLAG
+
+        if remove_oat and (oat := Path(self.file).parent.joinpath('oat')).exists():
+            shutil.rmtree(oat)
 
     def refactor(self):
         old_file = f'{self.file}.old'

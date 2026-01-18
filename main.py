@@ -25,13 +25,11 @@ def dump_payload(file: str):
     subprocess.run([payload_extract, '-x', '-i', file, '-o', 'images'], check=True)
 
 
-def remove_official_recovery():
+def unpack_img():
     ccglobal.log('去除官方 Recovery')
     recovery = Path('images/recovery.img')
     recovery.unlink(True)
 
-
-def unpack_img():
     for partition in config.UNPACK_PARTITIONS:
         imgfile.unpack(f'images/{partition}.img', partition)
 
@@ -283,7 +281,6 @@ def make_module(args: argparse.Namespace):
 def make_rom(args: argparse.Namespace):
     ccglobal.log('构建全量包')
     dump_payload(args.file)
-    remove_official_recovery()
     unpack_img()
     read_rom_information()
     custom_kernel(args.kernel)

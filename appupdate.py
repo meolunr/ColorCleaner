@@ -150,7 +150,7 @@ def pull_apks_from_device(new_apks: list[str], old_dir: str):
 
     # Pull split apks
     for new_apk in new_apks:
-        old_apk = f'{old_dir}/{os.path.basename(new_apk)}.apk'
+        old_apk = f'{old_dir}/{os.path.basename(new_apk)}'
         adb.pull(new_apk, old_apk)
 
     if extract_lib is None and len(new_apks) == 0:

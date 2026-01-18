@@ -5,8 +5,6 @@ import re
 import shutil
 import sys
 from glob import glob
-from pathlib import Path
-from zipfile import ZipFile
 
 import ccglobal
 import config
@@ -14,34 +12,6 @@ from build.apkfile import ApkFile
 from build.smali import MethodSpecifier
 from build.xml import XmlFile
 from util import template
-
-_MODIFIED_FLAG = b'CC-Mod'
-
-
-def modified(file: str):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            if not os.path.isfile(file):
-                return None
-
-            with ZipFile(file, 'r') as f:
-                comment = f.comment
-            if comment != _MODIFIED_FLAG:
-                func_result = func(*args, **kwargs)
-
-                with ZipFile(file, 'a') as f:
-                    f.comment = _MODIFIED_FLAG
-
-                oat = Path(file).parent.joinpath('oat')
-                if oat.exists():
-                    shutil.rmtree(oat)
-                return func_result
-            else:
-                return None
-
-        return wrapper
-
-    return decorator
 
 
 def rm_files():
@@ -108,10 +78,12 @@ def turn_off_flashlight_with_power_key():
 
 
 def disable_signature_verification():
-    ccglobal.log('禁用 V3 签名完整性验证')
     apk = ApkFile('system/system/framework/framework.jar')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('禁用 V3 签名完整性验证')
     smali = apk.open_smali('android/util/apk/ApkSigningBlockUtils.smali')
     specifier = MethodSpecifier()
     specifier.name = 'parseVerityDigestAndVerifySourceLength'
@@ -139,7 +111,7 @@ def disable_signature_verification():
     specifier.parameters = '[BLjava/io/RandomAccessFile;Landroid/util/apk/SignatureInfo;'
     smali.method_nop(specifier)
 
-    apk.build()
+    apk.build(remove_oat=False)
     os.remove(f'{apk.file}.fsv_meta')
     for file in glob('system/system/framework/**/boot-framework.*', recursive=True):
         if not os.path.samefile(apk.file, file):
@@ -148,6 +120,8 @@ def disable_signature_verification():
 
 def patch_oplus_services():
     apk = ApkFile('system/system/framework/oplus-services.jar')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('禁用 ADB 安装确认')
@@ -164,16 +138,17 @@ def patch_oplus_services():
     specifier.parameters = 'Ljava/lang/String;IILjava/lang/String;Landroid/app/PendingIntent;Lcom/android/internal/net/VpnConfig;'
     smali.method_nop(specifier)
 
-    apk.build()
+    apk.build(remove_oat=False)
     os.remove(f'{apk.file}.fsv_meta')
     for file in glob('system/system/framework/oat/arm64/oplus-services.*'):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 
 
-@modified('system_ext/priv-app/SystemUI/SystemUI.apk')
 def patch_system_ui():
     apk = ApkFile('system_ext/priv-app/SystemUI/SystemUI.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('禁用控制中心时钟红1')
@@ -273,9 +248,10 @@ Lcom/android/systemui/statusbar/policy/DeviceProvisionedController;')
     apk.build()
 
 
-@modified('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
 def patch_launcher():
     apk = ApkFile('system_ext/priv-app/OplusLauncher/OplusLauncher.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('允许最近任务显示内存信息')
@@ -328,9 +304,10 @@ def patch_launcher():
     apk.build()
 
 
-@modified('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
 def patch_theme_store():
     apk = ApkFile('my_stock/app/KeKeThemeSpace/KeKeThemeSpace.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('去除主题商店广告')
@@ -405,12 +382,13 @@ def patch_theme_store():
     apk.build()
 
 
-@modified('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
 def disable_lock_screen_red_one():
-    ccglobal.log('禁用锁屏时钟红1')
     apk = ApkFile('system_ext/app/KeyguardClockBase/KeyguardClockBase.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('禁用锁屏时钟红1')
     smali = apk.open_smali('com/oplus/keyguard/clock/base/widget/CustomizedTextView.smali')
     specifier = MethodSpecifier()
     specifier.name = 'setHourText'
@@ -420,12 +398,13 @@ def disable_lock_screen_red_one():
     apk.build()
 
 
-@modified('my_stock/app/Clock/Clock.apk')
 def disable_launcher_clock_red_one():
-    ccglobal.log('禁用桌面时钟小部件红1')
     apk = ApkFile('my_stock/app/Clock/Clock.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('禁用桌面时钟小部件红1')
     smali = apk.find_smali('"DeviceUtils"', '"not found class:com.oplus.widget.OplusTextClock"').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
@@ -438,13 +417,14 @@ def disable_launcher_clock_red_one():
     apk.build()
 
 
-@modified('system_ext/app/OplusCommercialEngineerMode/OplusCommercialEngineerMode.apk')
 def show_touchscreen_panel_info():
-    ccglobal.log('显示工程模式中的屏生产信息')
     apk = ApkFile('system_ext/app/OplusCommercialEngineerMode/OplusCommercialEngineerMode.apk')
+    if apk.not_need_modify():
+        return
     apk.refactor()
-    apk.decode(False)
+    apk.decode(no_res=False)
 
+    ccglobal.log('显示工程模式中的屏生产信息')
     xml = apk.open_xml('xml/as_multimedia_test.xml')
     root = xml.get_root()
     attr_title = xml.make_attr_key('android:title')
@@ -460,13 +440,14 @@ def show_touchscreen_panel_info():
     apk.build()
 
 
-@modified('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
 def show_netmask_and_gateway():
-    ccglobal.log('显示 WLAN 设置中的子网掩码和网关')
     apk = ApkFile('system_ext/priv-app/WirelessSettings/WirelessSettings.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
     apk.add_smali(f'{ccglobal.MISC_DIR}/smali/WirelessSettings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
+    ccglobal.log('显示 WLAN 设置中的子网掩码和网关')
     smali = apk.open_smali('com/oplus/wirelesssettings/wifi/detail2/WifiAddressController.smali')
     old_body = smali.find_constructor('Landroid/content/Context;Lcom/android/wifitrackerlib/WifiEntry;')
     context_field = re.search(r'iput-object p1, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->(\S+):Landroid/content/Context;', old_body).group(1)
@@ -544,9 +525,10 @@ showNetmaskAndGateway(Landroid/content/Context;Landroidx/preference/Preference;L
     apk.build()
 
 
-@modified('system_ext/priv-app/Settings/Settings.apk')
 def patch_settings():
     apk = ApkFile('system_ext/priv-app/Settings/Settings.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
     apk.add_smali(f'{ccglobal.MISC_DIR}/smali/Settings.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
@@ -582,9 +564,10 @@ def patch_settings():
     apk.build()
 
 
-@modified('my_stock/priv-app/PhoneManager/PhoneManager.apk')
 def patch_phone_manager():
     apk = ApkFile('my_stock/priv-app/PhoneManager/PhoneManager.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('去除手机管家广告')
@@ -655,9 +638,10 @@ def patch_phone_manager():
     apk.build()
 
 
-@modified('system_ext/priv-app/TeleService/TeleService.apk')
 def patch_tele_service():
     apk = ApkFile('system_ext/priv-app/TeleService/TeleService.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('显示首选网络类型设置')
@@ -709,12 +693,13 @@ const/4 \\g<1>, 0x0
     apk.build()
 
 
-@modified('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
 def remove_traffic_monitor_ads():
-    ccglobal.log('去除流量管理中的流量卡广告')
     apk = ApkFile('system_ext/priv-app/TrafficMonitor/TrafficMonitor.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('去除流量管理中的流量卡广告')
     smali = apk.find_smali('"datausage_TrafficCardController"', '"updateHighDataSimCardConfiguration"').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
@@ -753,12 +738,13 @@ def remove_traffic_monitor_ads():
     apk.build()
 
 
-@modified('system_ext/app/NotificationCenter/NotificationCenter.apk')
 def show_icon_for_silent_notification():
-    ccglobal.log('允许显示静默通知的图标')
     apk = ApkFile('system_ext/app/NotificationCenter/NotificationCenter.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('允许显示静默通知的图标')
     smali = apk.open_smali('com/oplus/notificationmanager/fragments/main/MoreSettingFragment.smali')
     specifier = MethodSpecifier()
     specifier.name = 'onCreateView'
@@ -781,12 +767,13 @@ initPreference\\(Landroidx/preference/PreferenceFragmentCompat;Ljava/lang/String
     apk.build()
 
 
-@modified('my_stock/app/MCS/MCS.apk')
 def remove_system_notification_ads():
-    ccglobal.log('去除系统通知广告')
     apk = ApkFile('my_stock/app/MCS/MCS.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('去除系统通知广告')
     smali = apk.find_smali('"excellent recommendation"', r'"\u7cbe\u5f69\u63a8\u8350"').pop()
     specifier = MethodSpecifier()
     specifier.is_static = True
@@ -798,9 +785,10 @@ def remove_system_notification_ads():
     apk.build()
 
 
-@modified('my_stock/priv-app/Mms/Mms.apk')
 def remove_mms_ads():
     apk = ApkFile('my_stock/priv-app/Mms/Mms.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
     apk.add_smali(f'{ccglobal.MISC_DIR}/smali/Mms.smali', 'com/meolunr/colorcleaner/CcInjector.smali')
 
@@ -850,12 +838,13 @@ def remove_mms_ads():
     apk.build()
 
 
-@modified('my_stock/app/Calendar/Calendar.apk')
 def remove_calendar_ads():
-    ccglobal.log('去除日历广告')
     apk = ApkFile('my_stock/app/Calendar/Calendar.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('去除日历广告')
     smali = apk.open_smali('com/android/calendar/module/subscription/almanac/adapter/AlmanacPagesAdapter.smali')
     specifier = MethodSpecifier()
     specifier.name = 'getItemViewType'
@@ -888,9 +877,10 @@ def remove_calendar_ads():
     apk.build()
 
 
-@modified('my_stock/app/OppoWeather2/OppoWeather2.apk')
 def patch_weather():
     apk = ApkFile('my_stock/app/OppoWeather2/OppoWeather2.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('去除天气广告')
@@ -1034,13 +1024,14 @@ def patch_weather():
     apk.build()
 
 
-@modified('my_stock/priv-app/KeKeMarket/KeKeMarket.apk')
 def ignore_modified_app_update():
-    ccglobal.log('忽略修改过的系统应用更新')
     apk = ApkFile('my_stock/priv-app/KeKeMarket/KeKeMarket.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
     apk.add_smali(f'{ccglobal.MISC_DIR}/smali/KeKeMarket.smali', 'com/meolunr/colorcleaner/Template.smali')
 
+    ccglobal.log('忽略修改过的系统应用更新')
     smali = apk.find_smali('"AppMd5Util"').pop()
     specifier = MethodSpecifier()
     specifier.Access = MethodSpecifier.Access.PUBLIC
