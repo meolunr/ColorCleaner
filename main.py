@@ -7,7 +7,7 @@ import re
 import shutil
 import subprocess
 import time
-from glob import glob
+from glob import iglob
 from pathlib import Path, PurePath
 
 import appupdate
@@ -91,13 +91,13 @@ def install_lkm(no_lkm: bool):
 
 
 def patch_vbmeta():
-    for img in glob('vbmeta*.img', root_dir='images'):
+    for img in iglob('vbmeta*.img', root_dir='images'):
         ccglobal.log(f'修补 vbmeta: {img}')
         vbmeta.patch(f'images/{img}')
 
 
 def disable_avb_and_dm_verity():
-    for file in glob('**/etc/fstab.*', recursive=True):
+    for file in iglob('**/etc/fstab.*', recursive=True):
         ccglobal.log(f'禁用 AVB 验证引导和 Data 加密: {file}')
         with open(file, 'r+', encoding='utf-8', newline='') as f:
             lines = f.readlines()
@@ -210,7 +210,7 @@ def generate_script():
 
 
 def compress_zip():
-    ccglobal.log('构建全量包')
+    ccglobal.log('打包 Zip 文件')
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
     cmd = [_7z, 'a', 'tmp.zip', 'META-INF']
     for img in os.listdir('images'):

@@ -212,7 +212,7 @@ def sync_opex_files(opex_files: list[str], is_make_module: bool):
                 src = Path(root).joinpath(file)
                 dst = src.relative_to(ovl_update)
                 if not is_make_module:
-                    dst = Path(myoverlay.local_real_path(f'/{dst.as_posix()}'))
+                    dst = Path(myoverlay.device_path_to_local(f'/{dst.as_posix()}'))
 
                 ccglobal.log(f'更新系统文件: {dst.as_posix()}')
                 if os.path.isfile(dst):

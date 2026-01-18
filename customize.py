@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 import sys
-from glob import glob
+from glob import iglob
 
 import ccglobal
 import config
@@ -27,10 +27,10 @@ def rm_files():
                 continue
             if os.path.exists(item):
                 ccglobal.log(f'删除文件: {item}')
-                if os.path.isdir(item):
-                    shutil.rmtree(item)
-                else:
+                if os.path.isfile(item):
                     os.remove(item)
+                else:
+                    shutil.rmtree(item)
             else:
                 ccglobal.log(f'文件不存在: {item}')
 
@@ -113,7 +113,7 @@ def disable_signature_verification():
 
     apk.build(remove_oat=False)
     os.remove(f'{apk.file}.fsv_meta')
-    for file in glob('system/system/framework/**/boot-framework.*', recursive=True):
+    for file in iglob('system/system/framework/**/boot-framework.*', recursive=True):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 
@@ -140,7 +140,7 @@ def patch_oplus_services():
 
     apk.build(remove_oat=False)
     os.remove(f'{apk.file}.fsv_meta')
-    for file in glob('system/system/framework/oat/arm64/oplus-services.*'):
+    for file in iglob('system/system/framework/oat/arm64/oplus-services.*'):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 

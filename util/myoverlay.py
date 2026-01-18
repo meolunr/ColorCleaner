@@ -1,9 +1,10 @@
 import os
+import re
 
 import config
 
 
-def local_real_path(device_path: str):
+def device_path_to_local(device_path: str):
     if device_path.startswith('/system/'):
         return f'system{device_path}'
     elif device_path.startswith('/product/') and not os.path.exists(device_path[1:]):
@@ -14,3 +15,11 @@ def local_real_path(device_path: str):
             if os.path.exists(path):
                 return path
     return device_path[1:]
+
+
+def local_path_to_overlay(local_path: str):
+    if re.fullmatch(r'my_\S+/.+', local_path) and not os.path.exists(local_path):
+        path = f'product{local_path[local_path.index('/'):]}'
+        if os.path.exists(path):
+            return path
+    return local_path

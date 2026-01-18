@@ -24,7 +24,7 @@ class NewApp(object):
     def __init__(self, package, new_apks, old_dir):
         self.package = package
         self.new_apks = new_apks
-        self.rom_old_dir = myoverlay.local_real_path(old_dir)
+        self.rom_old_dir = myoverlay.device_path_to_local(old_dir)
         self.module_old_dir = old_dir[1:]
         self.source = None
         self.version_code = None

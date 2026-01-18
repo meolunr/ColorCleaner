@@ -47,9 +47,8 @@ class ApkFile:
         os.remove(old_file)
 
     def open_smali(self, file: str):
-        dirs = set(map(lambda x: f'smali/{x}', os.listdir(f'{self.output}/smali')))
-        for dir_name in dirs:
-            assumed_path = f'{self.output}/{dir_name}/{file}'
+        for smali_dir in iglob(f'{self.output}/smali/*'):
+            assumed_path = f'{smali_dir}/{file}'
             if os.path.exists(assumed_path):
                 return SmaliFile(assumed_path)
         return None
