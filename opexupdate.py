@@ -192,14 +192,14 @@ def unpack_img(opex_files: list[str]):
         os.remove('opex/opex.img')
 
 
-def is_cygwin_symlink(file: str):
+def is_cygwin_symlink(file: os.PathLike[str]):
     with open(file, 'rb') as f:
         if f.read(10) == b'!<symlink>':
             return True
     return False
 
 
-def sync_opex_files(opex_files: list[str], is_module: bool):
+def sync_opex_files(opex_files: list[str], is_make_module: bool):
     if not opex_files:
         return
     unpack_img(opex_files)
@@ -209,21 +209,26 @@ def sync_opex_files(opex_files: list[str], is_module: bool):
             for file in files:
                 if file == 'opex.cfg':
                     continue
-                src = os.path.join(root, file)
-                dst = Path(src).relative_to(ovl_update).as_posix()
-                if not is_module:
-                    dst = myoverlay.local_real_path(f'/{dst}')
+                src = Path(root).joinpath(file)
+                dst = src.relative_to(ovl_update)
+                if not is_make_module:
+                    dst = Path(myoverlay.local_real_path(f'/{dst.as_posix()}'))
 
-                ccglobal.log(f'更新系统文件: {dst}')
+                ccglobal.log(f'更新系统文件: {dst.as_posix()}')
                 if os.path.isfile(dst):
                     os.remove(dst)
                 elif os.path.isdir(dst):
                     shutil.rmtree(dst)
-                if is_cygwin_symlink(src):
+
+                is_symlink = is_cygwin_symlink(src)
+                if not is_make_module and is_symlink:
                     continue
 
-                Path(dst).parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(src, dst)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if is_symlink:
+                    dst.touch()
+                else:
+                    shutil.move(src, dst)
 
 
 def run_on_rom(opex_files: list[str]):
