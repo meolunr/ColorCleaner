@@ -169,13 +169,15 @@ def run_on_rom():
         return
     packages = set()
     for app in fetch_updated_apps():
-        if app.version_code <= ApkFile(f'{app.rom_old_dir}/{os.path.basename(app.rom_old_dir)}.apk').version_code():
+        rom_apk_version = ApkFile(f'{app.rom_old_dir}/{os.path.basename(app.rom_old_dir)}.apk').version_code()
+        if app.version_code < rom_apk_version:
             # Oplus has updated the apk in ROM
             continue
-        ccglobal.log(f'更新系统应用: {app.rom_old_dir}')
-        shutil.rmtree(app.rom_old_dir)
-        os.mkdir(app.rom_old_dir)
-        pull_apks_from_device(app.new_apks, app.rom_old_dir)
+        elif app.version_code > rom_apk_version:
+            ccglobal.log(f'更新系统应用: {app.rom_old_dir}')
+            shutil.rmtree(app.rom_old_dir)
+            os.mkdir(app.rom_old_dir)
+            pull_apks_from_device(app.new_apks, app.rom_old_dir)
         packages.add(app.package)
 
     write_record(rom=packages, module=set())

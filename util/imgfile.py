@@ -47,7 +47,7 @@ def unpack(file: str, partition: str, out_dir: str = '.'):
     with open(f'{out_dir}/config/{partition}_fs_type', 'w', encoding='utf-8') as f:
         f.write(fs_type.name)
 
-    ccglobal.log(f'提取镜像: {file}, 格式: {fs_type}')
+    ccglobal.log(f'提取镜像: {file}, 格式: {fs_type.name}')
     match fs_type:
         case FileSystem.EROFS:
             subprocess.run([_EXTRACT_EROFS, '-x', '-i', file, '-o', out_dir], check=True)
@@ -69,7 +69,7 @@ def repack(file: str, partition: str, out_dir: str = '.'):
     with open(f'{out_dir}/config/{partition}_fs_type', 'r', encoding='utf-8') as f:
         fs_type = FileSystem[f.read()]
 
-    ccglobal.log(f'打包镜像: {file}, 格式: {fs_type}')
+    ccglobal.log(f'打包镜像: {file}, 格式: {fs_type.name}')
     match fs_type:
         case FileSystem.EROFS:
             subprocess.run([_MKFS_EROFS, '-zlz4hc,1', '-T', '1230768000', '--mount-point', f'/{partition}', '--fs-config-file', f'{out_dir}/config/{partition}_fs_config',
