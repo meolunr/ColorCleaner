@@ -3,43 +3,13 @@ import os
 import re
 import shutil
 import sys
-from glob import glob
-from pathlib import Path
-from zipfile import ZipFile
+from glob import iglob
 
 import ccglobal
 import config
 from build.apkfile import ApkFile
 from build.smali import MethodSpecifier
 from util import template
-
-_MODIFIED_FLAG = b'CC-Mod'
-
-
-def modified(file: str):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            if not os.path.isfile(file):
-                return None
-
-            with ZipFile(file, 'r') as f:
-                comment = f.comment
-            if comment != _MODIFIED_FLAG:
-                func_result = func(*args, **kwargs)
-
-                with ZipFile(file, 'a') as f:
-                    f.comment = _MODIFIED_FLAG
-
-                oat = Path(file).parent.joinpath('oat')
-                if oat.exists():
-                    shutil.rmtree(oat)
-                return func_result
-            else:
-                return None
-
-        return wrapper
-
-    return decorator
 
 
 def rm_files():
@@ -55,10 +25,10 @@ def rm_files():
                 continue
             if os.path.exists(item):
                 ccglobal.log(f'删除文件: {item}')
-                if os.path.isdir(item):
-                    shutil.rmtree(item)
-                else:
+                if os.path.isfile(item):
                     os.remove(item)
+                else:
+                    shutil.rmtree(item)
             else:
                 ccglobal.log(f'文件不存在: {item}')
 
@@ -73,10 +43,12 @@ def replace_analytics():
 
 
 def disable_signature_verification():
-    ccglobal.log('禁用 V3 签名完整性验证')
     apk = ApkFile('system/system/framework/framework.jar')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('禁用 V3 签名完整性验证')
     smali = apk.open_smali('android/util/apk/ApkSigningBlockUtils.smali')
     specifier = MethodSpecifier()
     specifier.name = 'parseVerityDigestAndVerifySourceLength'
@@ -104,15 +76,17 @@ def disable_signature_verification():
     specifier.parameters = '[BLjava/io/RandomAccessFile;Landroid/util/apk/SignatureInfo;'
     smali.method_nop(specifier)
 
-    apk.build()
+    apk.build(remove_oat=False)
     os.remove(f'{apk.file}.fsv_meta')
-    for file in glob('system/system/framework/**/boot-framework.*', recursive=True):
+    for file in iglob('system/system/framework/**/boot-framework.*', recursive=True):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 
 
 def patch_miui_services():
     apk = ApkFile('system_ext/framework/miui-services.jar')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('禁用关联启动对话框')
@@ -141,16 +115,17 @@ def patch_miui_services():
     new_body = re.sub(pattern, '', old_body)
     smali.method_replace(old_body, new_body)
 
-    apk.build()
+    apk.build(remove_oat=False)
     os.remove(f'{apk.file}.fsv_meta')
-    for file in glob('system_ext/framework/oat/arm64/miui-services.*'):
+    for file in iglob('system_ext/framework/oat/arm64/miui-services.*'):
         if not os.path.samefile(apk.file, file):
             os.remove(file)
 
 
-@modified('system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk')
 def disable_historical_notification():
     apk = ApkFile('system_ext/priv-app/MiuiSystemUI/MiuiSystemUI.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('禁用历史通知')
@@ -167,14 +142,14 @@ def disable_historical_notification():
     apk.build()
 
 
-@modified('product/priv-app/MIUIPackageInstaller/MIUIPackageInstaller.apk')
 def patch_package_installer():
-    ccglobal.log('去除应用包管理组件广告')
     apk = ApkFile('product/priv-app/MIUIPackageInstaller/MIUIPackageInstaller.apk')
+    if apk.not_need_modify():
+        return
     apk.refactor()
-    apk.decode(False)
+    apk.decode(no_res=False)
 
-    # Remove ads
+    ccglobal.log('去除应用包管理组件广告')
     smali = apk.open_smali('com/miui/packageInstaller/model/ApkInfo.smali')
     specifier = MethodSpecifier()
     specifier.name = 'getSystemApp'
@@ -238,9 +213,10 @@ def patch_package_installer():
     apk.build()
 
 
-@modified('product/app/MIUIThemeManager/MIUIThemeManager.apk')
 def patch_theme_manager():
     apk = ApkFile('product/app/MIUIThemeManager/MIUIThemeManager.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('去除主题商店广告')
@@ -286,7 +262,7 @@ def patch_theme_manager():
     specifier.return_type = 'Lcom/android/thememanager/basemodule/resource/model/Resource;'
     insert = '''\
     const/4 v0, 0x1
-    
+
     iput-boolean v0, p0, Lcom/android/thememanager/detail/theme/model/OnlineResourceDetail;->bought:Z
 '''
     smali.method_insert_before(specifier, insert)
@@ -330,12 +306,13 @@ def patch_theme_manager():
     apk.build()
 
 
-@modified('system_ext/priv-app/AuthManager/AuthManager.apk')
 def disable_sensitive_word_check():
-    ccglobal.log('禁用设备名称敏感词检查')
     apk = ApkFile('system_ext/priv-app/AuthManager/AuthManager.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('禁用设备名称敏感词检查')
     smali = apk.open_smali('com/miui/privacy/WNProvider.smali')
     specifier = MethodSpecifier()
     specifier.name = 'call'
@@ -413,9 +390,10 @@ def disable_sensitive_word_check():
     apk.build()
 
 
-@modified('product/priv-app/MIUISecurityCenter/MIUISecurityCenter.apk')
 def patch_security_center():
     apk = ApkFile('product/priv-app/MIUISecurityCenter/MIUISecurityCenter.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('去除应用信息举报按钮')
@@ -641,12 +619,13 @@ def patch_security_center():
     apk.build()
 
 
-@modified('system/system/priv-app/TeleService/TeleService.apk')
 def show_network_type_settings():
-    ccglobal.log('显示首选网络类型设置')
     apk = ApkFile('system/system/priv-app/TeleService/TeleService.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('显示首选网络类型设置')
     smali = apk.open_smali('com/android/phone/NetworkModeManager.smali')
     specifier = MethodSpecifier()
     specifier.name = 'isRemoveNetworkModeSettings'
@@ -659,9 +638,10 @@ def show_network_type_settings():
     apk.build()
 
 
-@modified('product/priv-app/MiuiMms/MiuiMms.apk')
 def remove_mms_ads():
     apk = ApkFile('product/priv-app/MiuiMms/MiuiMms.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
     ccglobal.log('去除短信输入框广告')
@@ -685,12 +665,13 @@ def remove_mms_ads():
     apk.build()
 
 
-@modified('product/app/MiTrustService/MiTrustService.apk')
 def disable_mi_trust_service_mrm():
-    ccglobal.log('禁用 Mrm 风险检测')
     apk = ApkFile('product/app/MiTrustService/MiTrustService.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
 
+    ccglobal.log('禁用 Mrm 风险检测')
     smali = apk.find_smali('"MiTrustService/statusEventHandle"', '"try init mrmd Service"').pop()
     specifier = MethodSpecifier()
     specifier.access = MethodSpecifier.Access.PUBLIC
@@ -704,13 +685,14 @@ def disable_mi_trust_service_mrm():
     apk.build()
 
 
-@modified('product/app/MIUISuperMarket/MIUISuperMarket.apk')
 def ignore_modified_app_update():
-    ccglobal.log('忽略修改过的系统应用更新')
     apk = ApkFile('product/app/MIUISuperMarket/MIUISuperMarket.apk')
+    if apk.not_need_modify():
+        return
     apk.decode()
     apk.add_smali(f'{ccglobal.MISC_DIR}/smali/MIUISuperMarket.smali', 'com/meolunr/colorcleaner/Template.smali')
 
+    ccglobal.log('忽略修改过的系统应用更新')
     smali = apk.open_smali('com/xiaomi/market/data/LocalAppManager.smali')
     specifier = MethodSpecifier()
     specifier.name = 'getUpdateInfoFromServer'

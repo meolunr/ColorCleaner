@@ -7,7 +7,7 @@ import re
 import shutil
 import subprocess
 import time
-from glob import glob
+from glob import iglob
 from pathlib import Path
 
 import appupdate
@@ -24,37 +24,13 @@ def dump_payload(file: str):
     subprocess.run([payload_extract, '-x', '-i', file, '-o', 'images'], check=True)
 
 
-def remove_official_recovery():
+def unpack_img():
     ccglobal.log('去除官方 Recovery')
     recovery = Path('images/recovery.img')
     recovery.unlink(True)
 
-
-def unpack_img():
-    extract_erofs = f'{ccglobal.LIB_DIR}/extract.erofs.exe'
-    magiskboot = f'{ccglobal.LIB_DIR}/magiskboot.exe'
-    partition_filesystem = {}
-
     for partition in config.UNPACK_PARTITIONS:
-        img = f'{partition}.img'
-        file = f'images/{img}'
-        filesystem = imgfile.filesystem(file)
-        ccglobal.log(f'提取分区文件: {img}, 格式: {filesystem}')
-        match filesystem:
-            case imgfile.FileSystem.EROFS:
-                subprocess.run([extract_erofs, '-x', '-i', file], check=True)
-            case imgfile.FileSystem.BOOT:
-                os.mkdir(partition)
-                shutil.copy(file, f'{partition}/{img}')
-                os.chdir(partition)
-                subprocess.run([magiskboot, 'unpack', img], check=True)
-                os.chdir('..')
-        partition_filesystem[partition] = filesystem.name
-
-    if not os.path.isdir('config'):
-        os.mkdir('config')
-    with open(ccglobal.PARTITION_FILESYSTEM_JSON, 'w', encoding='utf-8') as f:
-        json.dump(partition_filesystem, f, indent=4)
+        imgfile.unpack(f'images/{partition}.img', partition)
 
 
 def read_rom_information():
@@ -114,13 +90,13 @@ def install_lkm(no_lkm: bool):
 
 
 def patch_vbmeta():
-    for img in glob('vbmeta*.img', root_dir='images'):
+    for img in iglob('vbmeta*.img', root_dir='images'):
         ccglobal.log(f'修补 vbmeta: {img}')
         vbmeta.patch(f'images/{img}', 'images/boot.img')
 
 
 def disable_avb_and_dm_verity():
-    for file in glob('**/etc/fstab.*', recursive=True):
+    for file in iglob('**/etc/fstab.*', recursive=True):
         ccglobal.log(f'禁用 AVB 验证引导和 Data 加密: {file}')
         with open(file, 'r+', encoding='utf-8', newline='') as f:
             lines = f.readlines()
@@ -167,24 +143,9 @@ def handle_pangu_overlay():
 
 
 def repack_img():
-    mkfs_erofs = f'{ccglobal.LIB_DIR}/mkfs.erofs.exe'
-    magiskboot = f'{ccglobal.LIB_DIR}/magiskboot.exe'
-    with open(ccglobal.PARTITION_FILESYSTEM_JSON, 'r', encoding='utf-8') as f:
-        partition_filesystem: dict = json.load(f)
-
     for partition in config.UNPACK_PARTITIONS:
-        ccglobal.log(f'打包分区文件: {partition}')
-        file = f'images/{partition}.img'
-        filesystem = imgfile.FileSystem[partition_filesystem[partition]]
-        match filesystem:
-            case imgfile.FileSystem.EROFS:
-                imgfile.sync_app_perm_and_context(partition)
-                subprocess.run([mkfs_erofs, '-zlz4hc,1', '-T', '1230768000', '--mount-point', f'/{partition}',
-                                '--fs-config-file', f'config/{partition}_fs_config', '--file-contexts', f'config/{partition}_file_contexts', file, partition], check=True)
-            case imgfile.FileSystem.BOOT:
-                os.chdir(partition)
-                subprocess.run([magiskboot, 'repack', 'boot.img', f'../{file}'], check=True)
-                os.chdir('..')
+        imgfile.sync_app_perm_and_context(partition)
+        imgfile.repack(f'images/{partition}.img', partition)
 
     ccglobal.log('清空 cust 分区')
     shutil.copy(f'{ccglobal.MISC_DIR}/BlankErofs.img', 'images/cust.img')
@@ -267,7 +228,7 @@ def generate_script():
 
 
 def compress_zip():
-    ccglobal.log('构建全量包')
+    ccglobal.log('打包 Zip 文件')
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
     cmd = [_7z, 'a', 'tmp.zip', 'META-INF']
     for img in os.listdir('images'):
@@ -285,7 +246,7 @@ def compress_zip():
         md5.update(f.read())
     filename = f'CC_{ccglobal.device}_{ccglobal.version}_{md5.hexdigest()[:10]}_{ccglobal.sdk}.zip'
     os.rename('tmp.zip', filename)
-    ccglobal.log(f'全量包文件: {os.path.abspath(filename).replace('\\', '/')}')
+    ccglobal.log(f'全量包文件: {Path(filename).resolve().as_posix()}')
 
 
 def make_module():
@@ -308,13 +269,12 @@ def make_module():
     template.substitute(template_dir.joinpath('module.prop'), var_version_code=version_code, var_version=version_name)
 
     _7z = f'{ccglobal.LIB_DIR}/7za.exe'
-    subprocess.run([_7z, 'a', f'CC_Patch_{version_name}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
+    subprocess.run([_7z, 'a', f'CC-Patch_{version_name}.zip', 'module.prop', 'system', 'customize.sh', 'post-fs-data.sh'], check=True)
 
 
 def make_rom(args: argparse.Namespace):
     ccglobal.log('构建全量包')
     dump_payload(args.file)
-    remove_official_recovery()
     unpack_img()
     read_rom_information()
     custom_kernel(args.kernel)

@@ -67,32 +67,32 @@ def install_test_module():
         ccglobal.log(f'已安装 CC 测试模块，重启设备后生效')
 
 
-def module_push(src_path: str, phone_path: str):
-    ccglobal.log(f'CCTest 文件推送: {phone_path}')
+def module_push(src_path: str, device_path: str):
+    ccglobal.log(f'CCTest 文件推送: {device_path}')
     if config.TEST_MODULE_OVERLAYFS:
-        overlay_dir_path = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(phone_path)}'
+        overlay_dir_path = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(device_path)}'
     else:
-        if phone_path.startswith('/system/'):
-            overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(phone_path)}'
+        if device_path.startswith('/system/'):
+            overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(device_path)}'
         else:
-            overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(f'/system{phone_path}')}'
+            overlay_dir_path = f'{_MODULE_DIR}{os.path.dirname(f'/system{device_path}')}'
     execute(f'mkdir -p {overlay_dir_path}')
     push(src_path, overlay_dir_path)
 
 
-def module_rm(phone_path: str):
-    ccglobal.log(f'CCTest 文件删除: {phone_path}')
+def module_rm(device_path: str):
+    ccglobal.log(f'CCTest 文件删除: {device_path}')
     if config.TEST_MODULE_OVERLAYFS:
-        rm_path_parent = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(phone_path)}'
+        rm_path_parent = f'{_OVERLAYFS_MODULE_DIR}{os.path.dirname(device_path)}'
     else:
-        if phone_path.startswith('/system/'):
-            rm_path_parent = f'{_MODULE_DIR}{os.path.dirname(phone_path)}'
+        if device_path.startswith('/system/'):
+            rm_path_parent = f'{_MODULE_DIR}{os.path.dirname(device_path)}'
         else:
-            rm_path_parent = f'{_MODULE_DIR}/system{os.path.dirname(phone_path)}'
+            rm_path_parent = f'{_MODULE_DIR}/system{os.path.dirname(device_path)}'
 
-    if phone_path.startswith('/my_'):
-        rm_path = f'{rm_path_parent}/{os.path.basename(phone_path)}'
-        if is_dir(phone_path):
+    if device_path.startswith('/my_'):
+        rm_path = f'{rm_path_parent}/{os.path.basename(device_path)}'
+        if is_dir(device_path):
             execute(f'mkdir -p {rm_path}')
             execute(f'touch {rm_path}/.replace')
         else:
@@ -100,23 +100,22 @@ def module_rm(phone_path: str):
             execute(f'touch {rm_path}')
     else:
         execute(f'mkdir -p {rm_path_parent}')
-        execute(f'mknod {_OVERLAYFS_MODULE_DIR}{phone_path} c 0 0')
+        execute(f'mknod {_OVERLAYFS_MODULE_DIR}{device_path} c 0 0')
 
 
-def module_overlay(phone_path: str):
-    if phone_path.startswith('/system/'):
-        module_push(f'system{phone_path}', phone_path)
+def module_overlay(device_path: str):
+    if device_path.startswith('/system/'):
+        module_push(f'system{device_path}', device_path)
     else:
-        module_push(phone_path[1:], phone_path)
+        module_push(device_path[1:], device_path)
 
 
-def exists(phone_path: str):
-    return execute(f'test -e {phone_path}') == 0
-
-
-def is_dir(phone_path: str):
-    return execute(f'test -d {phone_path}') == 0
+def is_dir(device_path: str):
+    return execute(f'test -d {device_path}') == 0
 
 
 def get_apk_path(package: str):
-    return getoutput(f'pm path {package}').read()[8:-1]
+    path = []
+    for line in getoutput(f'pm path {package}'):
+        path.append(line[8:-1])
+    return path

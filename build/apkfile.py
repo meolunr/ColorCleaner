@@ -1,6 +1,6 @@
 import os
 import shutil
-from glob import glob
+from glob import iglob
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -9,6 +9,8 @@ from .axml import ManifestXml
 from .smali import SmaliFile
 from .xml import XmlFile
 
+_MODIFIED_FLAG = b'CC-Mod'
+
 
 class ApkFile:
     def __init__(self, file: str):
@@ -16,15 +18,27 @@ class ApkFile:
         self.output = f'{self.file}.out'
         self._manifest_attributes = None
 
-    def decode(self, no_res=True):
+    def not_need_modify(self):
+        if os.path.isfile(self.file):
+            with ZipFile(self.file, 'r') as f:
+                return f.comment == _MODIFIED_FLAG
+        return True
+
+    def decode(self, *, no_res=True):
         if no_res:
             apkeditor.decode(self.file, self.output, 'raw')
         else:
             apkeditor.decode(self.file, self.output)
 
-    def build(self):
+    def build(self, *, remove_oat=True):
         apkeditor.build(self.output, self.file)
         shutil.rmtree(self.output)
+
+        with ZipFile(self.file, 'a') as f:
+            f.comment = _MODIFIED_FLAG
+
+        if remove_oat and (oat := Path(self.file).parent.joinpath('oat')).exists():
+            shutil.rmtree(oat)
 
     def refactor(self):
         old_file = f'{self.file}.old'
@@ -33,9 +47,8 @@ class ApkFile:
         os.remove(old_file)
 
     def open_smali(self, file: str):
-        dirs = set(map(lambda x: f'smali/{x}', os.listdir(f'{self.output}/smali')))
-        for dir_name in dirs:
-            assumed_path = f'{self.output}/{dir_name}/{file}'
+        for smali_dir in iglob(f'{self.output}/smali/*'):
+            assumed_path = f'{smali_dir}/{file}'
             if os.path.exists(assumed_path):
                 return SmaliFile(assumed_path)
         return None
@@ -44,7 +57,7 @@ class ApkFile:
         package_path = f'{package}/' if package else ''
         results = set[SmaliFile]()
         # See: https://docs.python.org/3/using/windows.html#removing-the-max-path-limitation
-        for file in glob(f'{self.output}/smali/classes*/{package_path}**/*.smali', recursive=True):
+        for file in iglob(f'{self.output}/smali/classes*/{package_path}**/*.smali', recursive=True):
             keyword_set = set(keywords)
             with open(file, 'r', encoding='utf-8') as f:
                 for line in f:
