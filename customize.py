@@ -918,6 +918,23 @@ def patch_weather():
     smali.method_replace(old_body, new_body)
 
     ccglobal.log('未来 15 日天气跳转折线图')
+    smali = apk.open_smali('com/oplus/weather/main/view/itemview/FutureDayWeatherChildItem.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'onFutureDayClicked'
+    specifier.parameters = 'Landroid/view/View;'
+
+    old_body = smali.find_method(specifier)
+    pattern = '''
+    iget ([v|p]\\d+), p0, Lcom/oplus/weather/main/view/itemview/FutureDayWeatherChildItem;->weatherIndex:I
+
+    (?!if-ltz \\1)\
+'''
+    repl = r'''
+    const/4 \g<1>, 0x0
+'''
+    new_body = re.sub(pattern, repl, old_body)
+    smali.method_replace(old_body, new_body)
+
     smali = apk.open_smali('com/oplus/weather/main/view/itemview/FutureDayWeatherItemCreator.smali')
     specifier = MethodSpecifier()
     specifier.name = 'parseFutureData'
