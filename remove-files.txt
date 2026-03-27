@@ -12,6 +12,7 @@ system/system/priv-app/DeviceAsWebcam
 system/system/priv-app/DynamicSystemInstallationService
 system/system/priv-app/LocalTransport
 system/system/priv-app/ManagedProvisioning
+system/system/priv-app/MusicFX
 system/system/priv-app/ONS
 system/system/priv-app/SharedStorageBackup
 system/system/priv-app/UserDictionaryProvider

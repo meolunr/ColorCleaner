@@ -188,12 +188,6 @@ def patch_system_ui():
 '''
     smali.method_replace(specifier, new_body)
 
-    ccglobal.log('去除开发者选项通知')
-    smali = apk.open_smali('com/oplus/systemui/statusbar/controller/SystemPromptController.smali')
-    specifier = MethodSpecifier()
-    specifier.name = 'updateDeveloperMode'
-    smali.method_nop(specifier)
-
     ccglobal.log('去除免打扰模式通知')
     smali = apk.open_smali('com/oplus/systemui/statusbar/notification/helper/DndAlertHelper.smali')
     specifier = MethodSpecifier()
@@ -312,7 +306,7 @@ def patch_theme_store():
 
     ccglobal.log('去除主题商店广告')
     # Remove splash ads
-    smali = apk.find_smali('"s-1"', '"getSplashScreen finish splashDto is null"', package='com/nearme/themespace/ad/self').pop()
+    smali = apk.find_smali('"s-1"', '"getSplashScreen finish splashDto is null"').pop()
     specifier = MethodSpecifier()
     specifier.parameters = 'Lcom/oppo/cdo/card/theme/dto/SplashDto;Landroid/os/Handler;'
     specifier.return_type = 'V'
@@ -323,13 +317,13 @@ def patch_theme_store():
     pattern = '''\
 (\\.method public \\S+\\(Lcom/oppo/cdo/card/theme/dto/SplashDto;Landroid/os/Handler;\\)V)
 (?:.|\n)*?
-    iget-object (?:[v|p]\\d+, ){2}(Lcom/nearme/themespace/ad/self/SelfSplashAdManager\\S+;->\\S+:Lcom/nearme/themespace/ad/self/SelfSplashAdManager;)
+    iget-object (?:[v|p]\\d+, ){2}(\\S+)
 (?:.|\n)*?
     const-string(?:/jumbo)? [v|p]\\d+, "s-1"
 (?:.|\n)*?
     const-string [v|p]\\d+, "getSplashScreen finish splashDto is null"
 (?:.|\n)*?
-    invoke-static {(?:[v|p]\\d+, ){3}[v|p]\\d+}, (Lcom/nearme/themespace/ad/self/SelfSplashAdManager;->\\S+\\(Lcom/nearme/themespace/ad/self/SelfSplashAdManager;Ljava/lang/String;Ljava/lang/String;Z\\)V)
+    invoke-static {(?:[v|p]\\d+, ){3}[v|p]\\d+}, (\\S+Ljava/lang/String;Ljava/lang/String;Z\\)V)
 '''
     match = re.search(pattern, old_body)
     new_body = f'''\

@@ -159,7 +159,7 @@ def get_opex_update_for_current(headers: dict[str, str], request_body: dict[str,
     headers['protectedKey'] = json.dumps(protected_key_dict)
 
     response = requests.post(operator.url, data=json.dumps(request_body), headers=headers, timeout=10)
-    response_body = json.loads(response.content)
+    response_body = response.json()
     if operator.response_body_json_root:
         response_body = json.loads(response_body[operator.response_body_json_root])
 
