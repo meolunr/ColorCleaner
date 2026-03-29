@@ -87,6 +87,11 @@ class ApkFile:
             self._parse_manifest()
         return self._manifest_attributes['application'].get('android:extractNativeLibs', None)
 
+    def min_sdk_version(self):
+        if not self._manifest_attributes:
+            self._parse_manifest()
+        return self._manifest_attributes['uses-sdk']['android:minSdkVersion']
+
     def _parse_manifest(self):
         with ZipFile(self.file, 'r') as zip_file:
             f = zip_file.open('AndroidManifest.xml', 'r')

@@ -102,7 +102,7 @@ class ManifestXml:
                 chunk = StartTagChunk(f)
                 name = self._get_string(chunk.name)
                 # Only parse these elements because we need their attributes
-                if name not in ('manifest', 'application'):
+                if name not in ('manifest', 'uses-sdk', 'application'):
                     # Skip attributes of start tag
                     f.seek(chunk.attribute_count * StartTagChunk.Attribute.SIZE, os.SEEK_CUR)
                     continue

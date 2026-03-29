@@ -7,7 +7,6 @@ import subprocess
 from enum import Enum, auto
 from glob import iglob
 from pathlib import Path
-from zipfile import ZipFile
 
 import ccglobal
 import config
@@ -146,17 +145,16 @@ def pull_apks_from_device(new_apks: list[str], old_dir: str):
     base_apk = f'{old_dir}/{os.path.basename(old_dir)}.apk'
     new_apk = new_apks.pop(0)
     adb.pull(new_apk, base_apk)
-    extract_lib = ApkFile(base_apk).extract_native_libs()
 
     # Pull split apks
     for new_apk in new_apks:
         old_apk = f'{old_dir}/{os.path.basename(new_apk)}'
         adb.pull(new_apk, old_apk)
 
+    apk = ApkFile(base_apk)
+    extract_lib = apk.extract_native_libs()
     if extract_lib is None and len(new_apks) == 0:
-        with ZipFile(base_apk) as f:
-            dirs = {x.split('/')[1] for x in f.namelist() if x.startswith('lib/')}
-            extract_lib = len(dirs) > 1
+        extract_lib = apk.min_sdk_version() < 23
 
     if extract_lib:
         _7z = f'{ccglobal.LIB_DIR}/7za.exe'
