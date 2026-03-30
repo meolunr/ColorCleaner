@@ -188,6 +188,12 @@ def patch_system_ui():
 '''
     smali.method_replace(specifier, new_body)
 
+    ccglobal.log('去除开发者选项通知')
+    smali = apk.open_smali('com/oplus/systemui/statusbar/controller/SystemPromptController.smali')
+    specifier = MethodSpecifier()
+    specifier.name = 'updateDeveloperMode'
+    smali.method_nop(specifier)
+
     ccglobal.log('去除免打扰模式通知')
     smali = apk.open_smali('com/oplus/systemui/statusbar/notification/helper/DndAlertHelper.smali')
     specifier = MethodSpecifier()
@@ -201,16 +207,16 @@ def patch_system_ui():
     specifier.name = 'performUsbDialogAction'
     insert = '''\
     const/16 v0, 0x3ea
-    
+
     if-eq p1, v0, :jump_return
-    
+
     const/16 v0, 0x3eb
-    
+
     if-ne p1, v0, :jump_normal
-    
+
     :jump_return
     return-void
-    
+
     :jump_normal
 '''
     smali.method_insert_before(specifier, insert)
@@ -229,7 +235,7 @@ Lcom/android/systemui/statusbar/policy/DeviceProvisionedController;')
 '''
     repl = r'''
     const-string \g<1>, "persist.vendor.battery_value_min"
-    
+
     const/4 \g<2>, -0x1
 
     invoke-static {\g<1>, \g<2>}, Landroid/os/SystemProperties;->getInt(Ljava/lang/String;I)I
@@ -331,13 +337,13 @@ def patch_theme_store():
     .locals 3
 
     move-object/from16 v0, p0
-    
+
     iget-object v0, v0, {match.group(2)}
 
     const-string v1, ""
-    
+
     const/4 v2, 0x1
-    
+
     invoke-static {{v0, v1, v1, v2}}, {match.group(3)}
 
     return-void
@@ -498,11 +504,11 @@ def show_netmask_and_gateway():
     move-result v0
 
     if-eqz v0, :jump
-    
+
     iget-object v1, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->{context_field}:Landroid/content/Context;
-    
+
     iget-object v2, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->{ip_preference_field}:Landroidx/preference/Preference;
-    
+
     iget-object v3, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->{ipv4_preference_field}:Landroidx/preference/Preference;
 
     iget-object p0, p0, Lcom/oplus/wirelesssettings/wifi/detail2/WifiAddressController;->{ipv6_preference_field}:Landroidx/preference/Preference;
