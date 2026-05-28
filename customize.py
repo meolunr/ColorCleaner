@@ -63,8 +63,12 @@ def disable_activity_start_dialog():
     ccglobal.log('禁用关联启动对话框')
     xml = XmlFile('my_stock/etc/extension/com.oplus.oplus-feature.xml')
     root = xml.get_root()
+
     element = root.find('oplus-feature[@name="oplus.software.activity_start_manager"]')
     root.remove(element)
+    element = root.find('oplus-feature[@name="oplus.software.instantapp_start_manager"]')
+    root.remove(element)
+
     xml.commit()
 
 
